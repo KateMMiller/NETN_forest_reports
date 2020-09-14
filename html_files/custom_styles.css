@@ -1,32 +1,40 @@
 body {
   font-family: "NPSRawlinsonOTTwo", NPSRawlinsonOTTwo, serif;
   font-size: 11px;
-  margin:0;
-  padding:0;
-  background-color:#e8e8e8;
-}
-
-main{
-  width:100%;
-  margin:0;
-  padding:0;
+  margin:0 auto;
+  max-width:1010px;
+  /*padding:0;*/
+  width:1010px;
+  /*height:768px;*/
+  /*background-color:#e8e8e8;*/
+  /*border:1.2px solid black;*/
+  /*margin:0 0 0 -48px;*/
+  padding:0 -5px auto;
+  -webkit-print-color-adjust: exact !important;
 }
 
 .boxBorder{
   border: 1.2px solid black;
-  width:940px;
+  width:1010px;
   height:100%;
-  margin:0 1px 0.1px -15px;
-  padding:3px 2px 3px 2px;
+  margin:-1px 1px 0 -50px;
+  /*margin:0 1px 0px -15px;*/
+  /*padding:3px 2px 3px 2px;*/
+  padding:0 5px 0 5px;
   background-color: white;
   background-size: auto;
 }
 
-.full-width{
-  width:940px;
+.map-size{
+  width:1010px;
   position:absolute;
-  margin:0 -15px 0 -15px;
+  /*overflow:hidden;*/
+  float:center;
+  margin:-1px 1px 0 -50px;
   padding:0 0 0 0;
+  background-color:#e8e8e8;
+  border: 1.2px solid black;
+  z-index: -1;
 }
 
 h1 {
@@ -49,14 +57,6 @@ h3 {
   margin:0px 0px 0px 0px;
 }
 
-.title{
-  background:#bed2ff;
-  width:940px;
-  text-align:center;
-  margin:-0.5px 0 0 -15px;
-  padding:10px 0 10px 0
-}
-
 h4 {
   font-family: "FrutigerLTStd-Black", FrutigerLTStd-Black, sans-serif;
   font-size:13px;
@@ -68,16 +68,19 @@ h5 {
   font-size:12px;
   padding:0 0 0 0;
   margin:0 0 0 0;
+  line-height:12px;
 }
 
 .header{
  float:center;
  background: black center no-repeat;
- height: 110px;
- width: 940px;
+ height: 95px;
+ width: 1010px;
  padding-bottom:0;
  padding-top:0;
  margin:0 auto;
+ line-height:12px;
+ -webkit-print-color-adjust:exact;
 }
 
 .col-left-header{
@@ -101,7 +104,8 @@ h5 {
   display: inline-block;
   height: 80px;
   position: relative; 
-  padding:5px 5px 2px 2px;
+  padding:8px 5px 2px 2px;
+  -webkit-print-color-adjust:exact;
 }
  
 .header h5 {
@@ -113,12 +117,22 @@ h5 {
   top: 1px;
   margin:4px 5px;
   font-family: "FrutigerLTStd-Black", FrutigerLTStd-Black, sans-serif;
+  }
+
+.title{
+  background:#bed2ff;  
+  border: 1.2px solid black;
+  width:1010px;
+  text-align:center;
+  margin:0px 0 0 -50px;
+  padding:10px 0 10px 0
+  -webkit-print-color-adjust:exact;
 }
 
 .footer h5 {
  bottom:0;
  height: 20px;
- width:940px;
+ width:1008px;
  font-family: "FrutigerLTStd-Light", FrutigerLTStd-Light, sans-serif;
 }
 

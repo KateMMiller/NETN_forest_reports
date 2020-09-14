@@ -9,14 +9,7 @@ library(shadowtext)
 library(ggspatial)
 library(rgeos)
 library(cowplot)
-#library(ggpubr) #ggarrange
-#library(grid)
-#library(ggsn) # for scalebar and north
-#library(ggmap)
-#library(leaflet.minicharts)
-#library(leaflet)
-#library(htmltools)
-#library(maptools)
+
 importData()
 
 park_code = "MABI"
@@ -75,7 +68,7 @@ regen_df <- regen_df %>% mutate(lat_nudge = case_when(Plot_Number == "017" ~ lat
                                 long_nudge = case_when(Plot_Number == "017" ~ long + 0.0001,
                                                        Plot_Number == "011" ~ long - 0.0001,
                                                        TRUE ~ long),
-                                totreg_std2 = ifelse(totreg_std <0.1, 0.1,totreg_std),
+                                totreg_std2 = ifelse(totreg_std <0.1, 0.1, totreg_std),
                                 )
 
 table(veg_shp@data$Map_Group)
@@ -142,7 +135,7 @@ veg_controls = data.frame(values = ordered(c("Conifer forest", "Conifer plantati
 map_controls = rbind(regen_controls, veg_controls)
 
 head(veg_shp2)
-
+par(bg = "#d9d9d9")
 map <-   ggplot(aes(x = long_nudge, y = lat_nudge), data = regen_df) +
          geom_polypath(data = veg_shp2, 
                       aes(x = long, y = lat, group = group, fill = id), 
@@ -163,8 +156,8 @@ map <-   ggplot(aes(x = long_nudge, y = lat_nudge), data = regen_df) +
          scale_fill_manual(values = map_colors)+
          geom_shadowtext(data = regen_df,
                          aes(label = Plot_Number), color = 'black', bg.color = 'white',
-                         check_overlap = TRUE,
-                         nudge_y = -((regen_df$totreg_std2/500)+0.0003))+
+                         check_overlap = TRUE, size = 3,
+                         nudge_y = -((regen_df$totreg_std2/500)+0.0004))+
 
          theme(panel.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
                plot.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
@@ -178,23 +171,24 @@ map <-   ggplot(aes(x = long_nudge, y = lat_nudge), data = regen_df) +
                axis.title = element_blank(),
                legend.title = element_text(size = 10),
                legend.text = element_text(size = 9),
-               plot.margin = unit(c(1,0.2,1,0.2),"cm"),
+               plot.margin = unit(c(0,-0.5,0.5,-0.5),"cm"),
                legend.position = "none"
                )+
          guides(fill = guide_legend(ncol = 2))+
          ggsn::scalebar(fortify(bound), dist = 250, dist_unit = 'm',
                         st.dist = 0.05,
-                        anchor = c(x = bound@bbox[1, "max"],
-                                   y = bound@bbox[2, "min"]-0.01),
-                        st.size = 4,
-                        height = 0.05,
+                        #location = "bottomright",
+                         anchor = c(x = bound@bbox[1, "max"]-0.0015,
+                                    y = bound@bbox[2, "min"]-0.005), #0.013
+                        st.size = 3,
+                        height = 0.025,
                         transform = TRUE,
                         box.color = "#696969",
                         box.fill = c("#d9d9d9","white"),
                         model = "WGS84")+
-          ggsn::north(fortify(bound), symbol = 12, scale = 0.15,
-                      anchor = c(x = bound@bbox[1, "max"]+0.002,
-                                 y = bound@bbox[2, "min"]-0.007))
+          ggsn::north(fortify(bound), symbol = 12, scale = 0.13,
+                      anchor = c(x = bound@bbox[1, "max"],
+                                 y = bound@bbox[2, "min"]-0.002)) #0.01
 map
 #####
 
@@ -210,13 +204,15 @@ regen_leg <- ggplot(aes(x = x, y = y, fill = values, group = values, shape = val
              theme(legend.position = "bottom",
                    legend.direction = "vertical",
                    legend.spacing.y = unit(0.1,'cm'),
-                   panel.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
+                    panel.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
                    plot.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
                    legend.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
                    legend.key = element_blank(),
-                   legend.text = element_text(margin = margin(-0.2,-0.2,0,0)),
+                   legend.key.size = unit(0.9, 'line'),
+                   legend.text = element_text(margin = margin(-0.2,-0.2,0,0), size = 9),
+                   legend.title = element_text(size = 10),
                    plot.margin = unit(c(-2,-2,0,0), "cm"))+
-             guides(fill = guide_legend(override.aes = list(size = c(8,8,8,8,8,3))))
+             guides(fill = guide_legend(override.aes = list(size = c(5, 5, 5, 5, 5, 3))))
              
 regen_leg
 
@@ -228,6 +224,9 @@ veg_leg <- ggplot(data = veg_shp2, aes(x = long, y = lat, group = group, fill = 
              theme(panel.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
                    plot.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
                    legend.background = element_rect(fill = "#e8e8e8", color = "#e8e8e8"),
+                   legend.text = element_text(size = 9),
+                   legend.title = element_text(size = 10),
+                   legend.key.size = unit(0.8,'line'),
                    plot.margin = unit(c(-2,-2,0,0), "cm"))+
              scale_fill_manual(values = veg_colors, 
                                name = "Vegetation type", 
@@ -236,19 +235,21 @@ veg_leg <- ggplot(data = veg_shp2, aes(x = long, y = lat, group = group, fill = 
 legend_grid <- plot_grid(
                  get_legend(veg_leg), 
                  get_legend(regen_leg), ncol = 3,
-                 rel_widths = c(1,1,2),
+                 rel_widths = c(1,1,4),
                  align = 'hv', 
                  hjust = 1)
 legend_grid
 
 map2 <- map + annotation_custom(ggplotGrob(legend_grid), 
-                        xmin = bound@bbox[1, "min"]-0.001,
+                        xmin = bound@bbox[1, "min"]-0.0005,#+0.001,
                         xmax = bound@bbox[1, "max"],
-                        ymin = bound@bbox[2, "min"]-0.028,
-                        ymax = bound@bbox[2, "max"])
-
+                        ymin = bound@bbox[2, "min"]-0.021, #-0.028
+                        ymax = bound@bbox[2, "max"])#+
+      # theme(plot.background = element_rect(fill='transparent', color = NA))
+#width = 8.25, height = 5.81
 map2
-ggsave("MABI_regen_size_class.jpg", map2, dpi = 300, width = 7.5, height = 5.5, units = 'in')
-ggsave("MABI_test.jpg", map, dpi=300, width = 7.5, units = 'in')
 
-?ggsave
+#ggsave("MABI_M1_Map1_regen_size_class.jpg", map2, dpi = 300, width =10.65, height = 6.11, units = 'in')
+
+ggsave("MABI_M1_Map1_regen_size_class.jpg", map2, dpi = 300, width =10.5, height = 5.73, units = 'in')
+
