@@ -1,3 +1,11 @@
+@media print {
+  *,
+  *:before,
+  *:after {
+  -webkit-print-color-adjust: exact;
+  }
+}
+
 body {
   font-family: "NPSRawlinsonOTTwo", NPSRawlinsonOTTwo, serif;
   font-size: 11px;
