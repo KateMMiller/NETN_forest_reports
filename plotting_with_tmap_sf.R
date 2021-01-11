@@ -79,7 +79,7 @@ head(map_controls)
 # Create long list for ggplot pie chart list
 reg2$Plot_Name[reg2$totreg_m2 > 0]
 
-plot_list <- sort(unique(reg2$Plot_Name[reg2$totreg_m2 > 0]))
+plot_list <- sort(unique(reg2$Plot_Name))
 
 reg_long <- reg2 %>% select(Plot_Name, sd15_30:sap) %>% 
             pivot_longer(cols = -Plot_Name, 
@@ -91,7 +91,7 @@ reg_long <- reg2 %>% select(Plot_Name, sd15_30:sap) %>%
 reg_long$size_class <- factor(reg_long$size_class,
                               levels = c("sd15_30", "sd30_100", "sd100_150", "sd150p", "sap"))
 
-reg_long <- reg_long %>% arrange(Plot_Name, size_class)
+reg_long <- reg_long %>% arrange(Plot_Name, size_class) 
 
 # Function to create formatted color list
 prep_sym_cols <- function(df, grp_var){
@@ -104,6 +104,7 @@ prep_sym_cols <- function(df, grp_var){
 
 regsize_cols <- prep_sym_cols(map_controls, "regsize")
 
+# Function to creat ggplot pie charts
 pie_fun <- function(df, plotname, y_var, grp_var){
   grp_var <- enquo(grp_var) 
   y_var <- enquo(y_var)
@@ -127,12 +128,13 @@ pie_fun <- function(df, plotname, y_var, grp_var){
   )
   }
 
+# Create list of pie charts by plot_list
 pie_list <- map(plot_list, ~pie_fun(reg_long, .x, y_var = dens, grp_var = size_class)) %>% 
             set_names(plot_list)
-
-#pie_list$`MORR-002`$data$dens #all 0s
+    #pie_list$`MORR-002`$data$dens #all 0s
 
 # Convert forest data to simple feature
+reg2 <- reg2 %>% mutate(plot_num = as.numeric(Plot_Number))
 reg_sf <- st_as_sf(reg2, coords = c("X_Coord", "Y_Coord"), crs = 26918, agr = "constant")
 st_crs(reg_sf) # UTM Zone 1#N
 reg_sf_alb <- st_transform(reg_sf, crs = 5070)
@@ -140,17 +142,65 @@ st_crs(reg_sf_alb) # Conus Albers Equal Area
 
 head(reg_sf_alb)
 
+# Create buffer to be similar to the size of pies. Use for checking plot overlap
+reg_buff <- st_buffer(reg_sf_alb, reg_sf_alb$totreg_std2*200)
+#st_write(reg_buff, "./shapefiles/reg_buff.shp", driver = "ESRI Shapefile")
+
+check_overlap <- function(sf, row){
+  overlaps <- st_overlaps(sf)  %>% set_names(sf$Plot_Name)
+  names(overlaps[row])
+  length(overlaps[[row]])
+  df <- data.frame(names(overlaps[row]), length(overlaps[[row]]))
+  colnames(df) <- c("Plot_Name", "num_overlaps")
+  return(df)
+}
+
+ol_plots <- bind_rows(lapply(seq_along(1:nrow(reg_buff)), 
+                     function(x){check <- check_overlap(reg_buff, x)}))
+ol_plots
+
+# Still don't have exact geometry of pie charts with buffer. Need to work on that
+# Then need to figure out how to take the plots that overlap, and nudge their
+# geometries so they don't.
+
+# Plot data
 basemap <- tm_shape(park_veg) +
              tm_fill("fills") +
            tm_shape(park_bound) +
              tm_borders(col = 'black', lwd = 2)
 
-basemap + tm_shape(reg_sf_alb %>% filter(totreg_m2 >0)) +
+pie_list
+
+map2 <- basemap + tm_shape(reg_sf_alb) +
           tm_symbols(size = "totreg_std2", 
                      shape = "Plot_Name",
-                     shapes = pie_list, 
+                     icon.scale = 4,
+                     size.lim = c(0.001,4),
+                     #size.max = 1, jitter = 0.5, xmod = 0.1, ymod = 0.1, scale = 1.2,
                      group = "Charts",
-                     border.col = NA,
-                     border.lwd = NA)+
-  tm_legend(show = FALSE)
+                     shapes = pie_list, 
+                     grob.dim = c(width = 48, height = 48, 
+                                  render.width = 256, render.height = 256),
+                     border.col = NA, border.lwd = NA)+
+          tm_legend(show = FALSE) + tm_compass(size = 2) + tm_scale_bar()
 
+reg_buff <- st_buffer(reg_sf_alb, reg_sf_alb$totreg_std2*200)
+
+map2 + tm_shape(reg_buff %>% filter(totreg_m2 > 0)) + 
+         tm_borders(col = 'red') + tm_text("plot_num") + 
+       tm_shape(reg_sf_alb %>% filter(totreg_m2 == 0))+
+         tm_symbols(shape = 24, size = 0.4, col = "#ff7f00")
+
+# reg_sf_alb <- reg_sf_alb %>% mutate(bub_size = totreg_std2)
+# head(reg_sf_alb)
+
+map2 + tm_shape(reg_sf_alb %>% filter(totreg_m2 > 0))+
+       tm_bubbles(size =  "totreg_std2",
+                  shape = 21,
+                  #size.lim = c(0, 0.1),
+                  scale = 2,
+                  alpha = 0,
+                  border.col = 'black')
+
+?tm_bubbles
+?tm_symbols
