@@ -6,15 +6,17 @@ library(sf)
 #library(rworldmap) # for mapPies
 library(tidyverse)
 library(forestNETN)
+library(geosphere) # for destPoint to calc nudge coords
 
-#----- Set up park controls
+
+#----- Set up park controls -----
 park_code <- 'MORR'
 park_long_name = "Morristown National Historical Park"
 park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
 } else {"+init=epsg:26918"}
 
 
-#----- Load spatial data
+#----- Load spatial data -----
 bounds <- st_read("./shapefiles/NETN_park_bounds_albers.shp")
 st_crs(bounds) #5070
 vegmap <- st_read("./shapefiles/NETN_vegmap_simplified_albers.shp")
@@ -53,7 +55,7 @@ intersect(names(park_veg), names(veg_colors))
 
 park_veg <- left_join(park_veg, veg_colors, by = "veg_type") # merge shapefile and colors for each veg_type
 
-# Prep forest data
+#----- Prep forest data -----
 importData()
 
 reg <- joinRegenData(park = park_code, speciesType = "native", canopyForm = 'all', 
@@ -93,6 +95,7 @@ reg_long$size_class <- factor(reg_long$size_class,
 
 reg_long <- reg_long %>% arrange(Plot_Name, size_class) 
 
+#----- Set up pie charts -----
 # Function to create formatted color list
 prep_sym_cols <- function(df, grp_var){
   map_colors_df <- df[df$group == grp_var, c('values','fills')]
@@ -104,7 +107,7 @@ prep_sym_cols <- function(df, grp_var){
 
 regsize_cols <- prep_sym_cols(map_controls, "regsize")
 
-# Function to creat ggplot pie charts
+# Function to create ggplot pie charts
 pie_fun <- function(df, plotname, y_var, grp_var){
   grp_var <- enquo(grp_var) 
   y_var <- enquo(y_var)
@@ -133,32 +136,230 @@ pie_list <- map(plot_list, ~pie_fun(reg_long, .x, y_var = dens, grp_var = size_c
             set_names(plot_list)
     #pie_list$`MORR-002`$data$dens #all 0s
 
+#----- Check and fix pie overlap -----
 # Convert forest data to simple feature
-reg2 <- reg2 %>% mutate(plot_num = as.numeric(Plot_Number))
+reg2 <- reg2 %>% mutate(plot_num = as.numeric(Plot_Number), 
+                        fig_radius = totreg_std2*200)
 reg_sf <- st_as_sf(reg2, coords = c("X_Coord", "Y_Coord"), crs = 26918, agr = "constant")
 st_crs(reg_sf) # UTM Zone 1#N
 reg_sf_alb <- st_transform(reg_sf, crs = 5070)
 st_crs(reg_sf_alb) # Conus Albers Equal Area
 
-head(reg_sf_alb)
+# check_overlap <- function(sf, row){
+#   # Create buffer to be similar to the size of pies. Use for checking plot overlap
+#   sf_buff <- st_buffer(sf, sf$fig_radius)
+#   overlaps <- st_overlaps(sf_buff)  %>% set_names(sf_buff$Plot_Name)
+#   
+#   df <- data.frame(names(overlaps[row]), length(overlaps[[row]]))
+#   colnames(df) <- c("Plot_Name", "num_overlaps")
+#   return(df)
+# }
+  sf <- reg_sf_alb
+#check_overlap <- function(sf){
+  sf$fig_radius <- sf$totreg_std2*200
+  
+  # Calculate the distance between the closest points. Take only the closest point
+  df_dist <- st_distance(sf)  %>% data.frame() %>% set_names(plot_list) %>% #distance b/t points
+    mutate(Plot_Name = plot_list) %>% select(Plot_Name, everything()) %>% 
+    pivot_longer(cols = c(-Plot_Name), names_to = "closest_plot", values_to = 'dist') %>% 
+    filter(Plot_Name != closest_plot) %>% #remove plot pairs that are 0
+    group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(1) %>% ungroup() 
+  
+  # Set up coordinates for first plot
+  df_c1 <- data.frame(cbind(sf$Plot_Name, df_dist$dist, sf$fig_radius, st_coordinates(sf))) %>% 
+    set_names(c("Plot_Name", "dist", "fig_radius", "X1", "Y1"))
+  
+    # Set up coordinates for the first plot's closest neighbor
+  df_c2 <- left_join(df_dist[,c("Plot_Name", "closest_plot")], df_c1[,c("Plot_Name", "X1", "Y1", "fig_radius")], 
+                     by = c("closest_plot" = "Plot_Name")) %>% 
+    set_names(c("Plot_Name", "closest_plot", "X2", "Y2", "fig_radius2"))
+  
+  
+  df_geom <- full_join(df_c1, df_c2, by = "Plot_Name") %>% select(Plot_Name, closest_plot, everything()) %>% 
+             mutate(across(c(dist, fig_radius, X1, X2, Y1, Y2, fig_radius2), as.numeric)) # all cols were chars
+  
+  # Add nudge angles for each closet pair
+  df_geom <- df_geom %>% mutate(diff_x = X1 - X2,
+                                diff_y = Y1 - Y2,
+                                dir_x = ifelse(diff_x > 0, 1, -1),
+                                dir_y = ifelse(diff_y > 0, 1, -1),
+                                angle = acos(abs(diff_x)/dist)*(180/pi),
+                                dir = dir_x + dir_y,
+                                angle_shift = case_when(dir == 2 ~ 90 - angle,
+                                                        dir == -2 ~ 180 + angle,
+                                                        abs(dir) < 2 & dir_x == -1 ~ 360 - angle,
+                                                        abs(dir) < 2 & dir_y == -1 ~ 90 + angle),
+                                tot_radius = fig_radius + fig_radius2) %>% 
+                         select(-dir, -fig_radius)
+  
+  df_geom_rad <- left_join(df_geom, st_drop_geometry(sf), by = "Plot_Name")
+  
+  # Convert final output to sf based on original plot coords
+  sf_geom_rad <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
 
-# Create buffer to be similar to the size of pies. Use for checking plot overlap
-reg_buff <- st_buffer(reg_sf_alb, reg_sf_alb$totreg_std2*200)
-#st_write(reg_buff, "./shapefiles/reg_buff.shp", driver = "ESRI Shapefile")
+  head(df_geom_rad)
+  # Create buffer to be similar to the size of pies. Use for checking plot overlap
+  sf_buff <- st_buffer(sf_geom_rad, sf_geom_rad$fig_radius)
 
+  overlaps <- st_drop_geometry(st_intersection(sf_buff)) %>% group_by(Plot_Name) %>% 
+    summarize(num_overlaps = sum(!is.na(Plot_Name))-1, 
+                                 .groups = "drop") %>% ungroup() %>% 
+    filter(num_overlaps > 0) %>% select(Plot_Name) %>% mutate(type = 'overlap')
+
+  withins <- st_within(sf_buff) %>% set_names(plot_list) %>% 
+    lapply(FUN = function(x) data.frame(inside = length(x)-1)) %>% 
+    bind_rows() %>% mutate(Plot_Name = plot_list) %>% 
+    filter(inside > 0) %>% select(Plot_Name) %>% mutate(type = 'within')
+  
+  plots_to_shift <- rbind(overlaps,withins) %>% arrange(Plot_Name, type) %>% 
+                    select(Plot_Name) %>% unique()
+  
+  # Now that we know the plots to shift X Y
+  str(df_geom_rad)
+  
+  sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
+  
+  head(df_geom_rad)
+  
+  df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse((fig_radius + fig_radius2) - dist > 0,
+                                                       (fig_radius + fig_radius2) - dist, 0), 
+                                        X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
+                                                         X1 + dir_x*(sin(angle*pi/180))*shift, X1),
+                                        Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
+                                                         Y1 + dir_x*(cos(angle*pi/180))*shift, Y1)
+                                        #           X1))
+                                        )
+  #df_check <- df_geom_rad[,c(1:5,29:30,6:15,27,28)]
+  
+  sf_test <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = 5070)
+
+  #}
+
+  test<-check_overlap(sf)
+
+# test <- st_within(sf_buff)
+ test2 <- st_intersection(sf_buff)
+ str(test2)
+# names(test2)
+
+ol_plots <- bind_rows(lapply(seq_along(1:nrow(reg_sf_alb)), 
+                             function(x){check <- check_overlap(reg_sf_alb, x)})) 
+
+reg_sf_alb_dist <- st_distance(reg_sf_alb) %>% unlist() %>% data.frame() %>% set_names(plot_list)
+reg_sf_alb2 <- cbind(reg_sf_alb$Plot_Name, reg_sf_alb_dist, ol_plots) %>% arrange(-num_overlaps) %>% select(-1)
+head(reg_sf_alb2)
+
+reg_sf_long <- reg_sf_alb2 %>% pivot_longer(cols = c(-Plot_Name, -num_overlaps),
+                                            names_to = "plot_comp", values_to = "distance") %>% 
+                                            arrange(-num_overlaps, -distance) %>% 
+                               filter(Plot_Name != plot_comp)
+names(reg_sf_long)
+
+ref_sf_long2 <- reg_sf_long %>% filter(num_overlaps > 0) %>% arrange(Plot_Name, distance) 
+
+ref_sf_long2
+
+ref_sf_long3 <- left_join(ref_sf_long2, st_drop_geometry(sf_buff[, c("Plot_Name", "fig_radius")]), 
+                          by = "Plot_Name")
+ref_sf_long3
+
+# Function used to check overlap within nudge_XY. The sf is the point feature with X/Y coordinates
+# The sf must also have a fig_radius field
 check_overlap <- function(sf, row){
-  overlaps <- st_overlaps(sf)  %>% set_names(sf$Plot_Name)
-  names(overlaps[row])
-  length(overlaps[[row]])
+  # Create buffer to be similar to the size of pies. Use for checking plot overlap
+  sf_buff <- st_buffer(sf, sf$fig_radius)
+  overlaps <- st_overlaps(sf_buff)  %>% set_names(sf_buff$Plot_Name)
   df <- data.frame(names(overlaps[row]), length(overlaps[[row]]))
   colnames(df) <- c("Plot_Name", "num_overlaps")
   return(df)
 }
 
-ol_plots <- bind_rows(lapply(seq_along(1:nrow(reg_buff)), 
-                     function(x){check <- check_overlap(reg_buff, x)}))
-ol_plots
+sf = reg_sf_alb
 
+# Function to iteratively nudge X Y coordinates until their graphs won't overlap
+# Must have a fig_radius column in sf_origin
+#nudge_XY <- function(sf){
+    # Check for overlaps
+    ol_plots <- bind_rows(lapply(seq_along(1:nrow(sf)), 
+                             function(x){check <- check_overlap(sf, x)})) 
+    
+    ol_plots2 <- cbind(st_drop_geometry(sf), ol_plots, st_coordinates(sf))
+    
+    if(sum(ol_plots2$num_overlaps) == 0){
+      cat("There are no overlapping plots. Graphs can be plotted using original coordinates.")
+      break()
+    } 
+    
+    if(sum(ol_plots2$num_overlaps) > 0) cat("There are", sum(ol_plots2$num_overlaps>0), "plots that overlap.",
+                                            "Use X_Nudge and Y_Nudge coordinates to plot graphs.")
+    
+    table(ol_plots2$num_overlaps)
+    # random sign to nudge plots
+    rand_sign = sample(c(-1,1),1)
+    ol_plots2$X_nudge <- ifelse(ol_plots2$num_overlaps > 0, 
+                                ol_plots2$X + rand_sign * 0.5 * ol_plots2$pie_radius, ol_plots2$X)
+    ol_plots2$Y_nudge <- ifelse(ol_plots2$num_overlaps > 0, 
+                                ol_plots2$Y + rand_sign * 0.5 * ol_plots2$pie_radius, ol_plots2$Y)
+    
+    ol_plots3 <- subset(ol_plots2, select = -c(num_overlaps))
+    
+    ol_plots_check <- st_as_sf(ol_plots3, coords = c("X_nudge", "Y_nudge"), crs = 5070, agr = "constant")
+    
+    reg_buff2 <- st_buffer(ol_plots_check, ol_plots_check$fig_radius)
+    
+    ol_plots_check2 <- bind_rows(lapply(seq_along(1:nrow(reg_buff2)), 
+                                        function(x){check <- check_overlap(reg_buff2, x)})) 
+    table(ol_plots_check2$num_overlaps)
+
+#}
+
+test <- st_jitter(reg_buff, factor = 0.01)
+plot(test[1])
+plot(reg_buff[1])
+#
+if(sum(ol_plots2$num_overlap))
+
+  test <- nudge_XY(reg_sf_alb, reg_buff)
+test
+
+  
+test <- st_overlaps(reg_buff) %>% set_names(reg_buff$Plot_Name)
+length(test[[1]])
+df <- data.frame(names(test[1]), length(test[[1]]))
+df
+
+names(test)
+
+# bbox <- st_bbox(reg_buff)
+# scale_m <- data.frame(x_diff = bbox$xmax - bbox$xmin,
+#                       y_diff = bbox$ymax - bbox$ymin)
+# rownames(scale_m) <- NULL
+# scale_m
+
+ol_plots2$X_nudge <- ifelse(ol_plots2$num_overlaps > 0, ol_plots2$X + 0.5*ol_plots2$pie_radius, ol_plots2$X)
+ol_plots2$Y_nudge <- ifelse(ol_plots2$num_overlaps > 0, ol_plots2$Y + 0.5*ol_plots2$pie_radius, ol_plots2$Y)
+ol_plots2 <- subset(ol_plots2, select = -c(num_overlaps))
+
+ol_plots_check <- st_as_sf(ol_plots2, coords = c("X_nudge", "Y_nudge"), crs = 5070, agr = "constant")
+reg_buff2 <- st_buffer(ol_plots_check, ol_plots_check$pie_radius)
+
+ol_plots_check2 <- bind_rows(lapply(seq_along(1:nrow(reg_buff2)), 
+                             function(x){check <- check_overlap(reg_buff2, x)})) 
+
+
+
+
+st_area(reg_buff)
+point_dist <- t(as.data.frame(st_distance(reg_buff)))
+head(point_dist)
+colnames(point_dist) <- unique(reg_buff$Plot_Name)
+str(point_dist)
+
+point_dist$Plot_Name <- reg_buff$Plot_Name
+str(point_dist)
+
+dist_comb <- cbind(point_dist, ol_plots)
+head(dist_comb)
 # Still don't have exact geometry of pie charts with buffer. Need to work on that
 # Then need to figure out how to take the plots that overlap, and nudge their
 # geometries so they don't.
