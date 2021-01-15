@@ -154,27 +154,54 @@ st_crs(reg_sf_alb) # Conus Albers Equal Area
 #   colnames(df) <- c("Plot_Name", "num_overlaps")
 #   return(df)
 # }
-  sf <- reg_sf_alb
-#check_overlap <- function(sf){
+
+# ID plots that have at least one overlapping pie. Used within nudge_XY
+check_overlap <- function(sf){
+  # Create buffer approximately the size of pies. 
+  sf_buff <- st_buffer(sf, sf$fig_radius)
+  
+  # Determine pies that overlap
+  overlaps <- st_drop_geometry(st_intersection(sf_buff)) %>% group_by(Plot_Name) %>% 
+    summarize(num_overlaps = sum(!is.na(Plot_Name))-1, 
+              .groups = "drop") %>% ungroup() %>% 
+    filter(num_overlaps > 0) %>% select(Plot_Name) %>% mutate(type = 'overlap')
+  
+  # Determine pies that are within another pie
+  withins <- st_within(sf_buff) %>% set_names(plot_list) %>% 
+    lapply(FUN = function(x) data.frame(inside = length(x)-1)) %>% 
+    bind_rows() %>% mutate(Plot_Name = plot_list) %>% 
+    filter(inside > 0) %>% select(Plot_Name) %>% mutate(type = 'within')
+  
+  # Bind plot list of pies to shift coords
+  plots_to_shift <- rbind(overlaps,withins) %>% arrange(Plot_Name, type) %>% 
+    select(Plot_Name) %>% unique()
+  
+  return(plots_to_shift)
+}
+
+nudge_XY <- function(sf){
+  # Approximate pie size for each plot
   sf$fig_radius <- sf$totreg_std2*200
   
   # Calculate the distance between the closest points. Take only the closest point
-  df_dist <- st_distance(sf)  %>% data.frame() %>% set_names(plot_list) %>% #distance b/t points
-    mutate(Plot_Name = plot_list) %>% select(Plot_Name, everything()) %>% 
-    pivot_longer(cols = c(-Plot_Name), names_to = "closest_plot", values_to = 'dist') %>% 
-    filter(Plot_Name != closest_plot) %>% #remove plot pairs that are 0
-    group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(1) %>% ungroup() 
+    # st_distance returns an array. Have to do a lot of munging to get the wanted format
+  df_dist <- st_distance(sf) %>% data.frame() %>% set_names(plot_list) %>% #distance b/t points
+               mutate(Plot_Name = plot_list) %>% select(Plot_Name, everything()) %>% 
+               pivot_longer(cols = c(-Plot_Name), names_to = "closest_plot", values_to = 'dist') %>% 
+               filter(Plot_Name != closest_plot) %>% #remove plot pairs that are 0
+               group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(1) %>% # slice the 1 closest point
+               ungroup() 
   
-  # Set up coordinates for first plot
+  # Set up coordinates for each plot
   df_c1 <- data.frame(cbind(sf$Plot_Name, df_dist$dist, sf$fig_radius, st_coordinates(sf))) %>% 
     set_names(c("Plot_Name", "dist", "fig_radius", "X1", "Y1"))
   
-    # Set up coordinates for the first plot's closest neighbor
+  # Set up coordinates for each plot's closest neighbor
   df_c2 <- left_join(df_dist[,c("Plot_Name", "closest_plot")], df_c1[,c("Plot_Name", "X1", "Y1", "fig_radius")], 
                      by = c("closest_plot" = "Plot_Name")) %>% 
     set_names(c("Plot_Name", "closest_plot", "X2", "Y2", "fig_radius2"))
   
-  
+  # Join coord dfs, to have plot coords and closest neighbor's coords. Convert to numeric
   df_geom <- full_join(df_c1, df_c2, by = "Plot_Name") %>% select(Plot_Name, closest_plot, everything()) %>% 
              mutate(across(c(dist, fig_radius, X1, X2, Y1, Y2, fig_radius2), as.numeric)) # all cols were chars
   
@@ -185,10 +212,10 @@ st_crs(reg_sf_alb) # Conus Albers Equal Area
                                 dir_y = ifelse(diff_y > 0, 1, -1),
                                 angle = acos(abs(diff_x)/dist)*(180/pi),
                                 dir = dir_x + dir_y,
-                                angle_shift = case_when(dir == 2 ~ 90 - angle,
-                                                        dir == -2 ~ 180 + angle,
-                                                        abs(dir) < 2 & dir_x == -1 ~ 360 - angle,
-                                                        abs(dir) < 2 & dir_y == -1 ~ 90 + angle),
+                                # angle_shift = case_when(dir == 2 ~ 90 - angle,
+                                #                         dir == -2 ~ 180 + angle,
+                                #                         abs(dir) < 2 & dir_x == -1 ~ 360 - angle,
+                                #                         abs(dir) < 2 & dir_y == -1 ~ 90 + angle),
                                 tot_radius = fig_radius + fig_radius2) %>% 
                          select(-dir, -fig_radius)
   
@@ -197,29 +224,12 @@ st_crs(reg_sf_alb) # Conus Albers Equal Area
   # Convert final output to sf based on original plot coords
   sf_geom_rad <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
 
-  head(df_geom_rad)
-  # Create buffer to be similar to the size of pies. Use for checking plot overlap
+  # # Create buffer to be similar to the size of pies. Use for checking plot overlap
   sf_buff <- st_buffer(sf_geom_rad, sf_geom_rad$fig_radius)
+  
+  plots_to_shift <- check_overlap(sf_buff)
 
-  overlaps <- st_drop_geometry(st_intersection(sf_buff)) %>% group_by(Plot_Name) %>% 
-    summarize(num_overlaps = sum(!is.na(Plot_Name))-1, 
-                                 .groups = "drop") %>% ungroup() %>% 
-    filter(num_overlaps > 0) %>% select(Plot_Name) %>% mutate(type = 'overlap')
-
-  withins <- st_within(sf_buff) %>% set_names(plot_list) %>% 
-    lapply(FUN = function(x) data.frame(inside = length(x)-1)) %>% 
-    bind_rows() %>% mutate(Plot_Name = plot_list) %>% 
-    filter(inside > 0) %>% select(Plot_Name) %>% mutate(type = 'within')
-  
-  plots_to_shift <- rbind(overlaps,withins) %>% arrange(Plot_Name, type) %>% 
-                    select(Plot_Name) %>% unique()
-  
-  # Now that we know the plots to shift X Y
-  str(df_geom_rad)
-  
   sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
-  
-  head(df_geom_rad)
   
   df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse((fig_radius + fig_radius2) - dist > 0,
                                                        (fig_radius + fig_radius2) - dist, 0), 
@@ -227,15 +237,16 @@ st_crs(reg_sf_alb) # Conus Albers Equal Area
                                                          X1 + dir_x*(sin(angle*pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          Y1 + dir_x*(cos(angle*pi/180))*shift, Y1)
-                                        #           X1))
                                         )
   #df_check <- df_geom_rad[,c(1:5,29:30,6:15,27,28)]
   
   sf_test <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = 5070)
+  
+  check_overlap(sf_test)
 
-  #}
+  }
 
-  test<-check_overlap(sf)
+
 
 # test <- st_within(sf_buff)
  test2 <- st_intersection(sf_buff)
