@@ -20,7 +20,7 @@ check_overlap <- function(sf){
     filter(inside > 0) %>% select(Plot_Name) %>% mutate(type = 'within')
   
   # Bind plot list of pies to shift coords
-  plots_to_shift <- rbind(overlaps,withins) %>% arrange(Plot_Name, type) %>% 
+  plots_to_shift <- rbind(overlaps, withins) %>% arrange(Plot_Name, type) %>% 
     select(Plot_Name) %>% unique()
   
   return(plots_to_shift)

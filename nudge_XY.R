@@ -5,13 +5,18 @@
 #
 # x and y are quoted coordinates, df is the dataframe to turn into simple feature
 # Using CRS 5070 (UTM albers). Returns a data.frame with nudged coordinates
+#   - consider adding crs as an argument, but keep it in UTM
+#
 nudge_XY <- function(df, x, y){
   
   # create sf from df
   sf <- st_as_sf(df, coords = c(x, y), crs = 5070, agr = "constant")
   
   # Approximate pie size for each plot
-  sf$fig_radius <- sf$totreg_std2*200
+  sf <- sf %>% mutate(fig_radius = case_when(totreg_std2 > 0.75 ~ totreg_std2*150,
+                                             between(totreg_std2, 0.4, 0.75) ~ totreg_std2*175, 
+                                             between(totreg_std2, 0.25, 0.4) ~ totreg_std2*275,
+                                             totreg_std2 < 0.25 ~ totreg_std2*300))
   
   # Calculate the distance between the closest points. Take only the closest point
   # st_distance returns an array. Have to do a lot of munging to get the wanted format
@@ -62,14 +67,11 @@ nudge_XY <- function(df, x, y){
                                         X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          X1 + dir_x*(sin(angle*pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-                                                         Y1 + dir_x*(cos(angle*pi/180))*shift, Y1)
-  ) %>% 
-    select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:totreg_std2, fig_radius) %>% 
-    rename(X_orig = X1,
-           Y_orig = Y1)
+                                                         Y1 + dir_x*(cos(angle*pi/180))*shift, Y1)) %>% 
+                                 select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:totreg_std2, fig_radius) %>% 
+                                 rename(X_orig = X1, Y_orig = Y1)
   
   #df_check <- df_geom_rad[,c(1:5,29:30,6:15,27,28)]
-  head(df_geom_rad)
   
   sf_final <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = 5070) 
   sf_final_buff <- st_buffer(sf_final, sf_final$fig_radius)
@@ -78,6 +80,11 @@ nudge_XY <- function(df, x, y){
   
   if(nrow(check_overlap(sf_final))==0){
     cat("Pies are ready to plot using X_Nudge and Y_Nudge as coordinates.")
-  } 
-  return(df_geom_rad)
+  } else cat("Number of overlapping plots: ", nrow(check_overlap(sf_final)))
+  
+  
+  df_final <- cbind(st_drop_geometry(sf_final), st_coordinates(sf_final)) %>% 
+              set_names(names(st_drop_geometry(sf_final)), "X_nudge", "Y_nudge")
+  
+  return(df_final)
 }
