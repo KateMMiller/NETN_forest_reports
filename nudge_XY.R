@@ -8,20 +8,20 @@
 #   - consider adding crs as an argument, but keep it in UTM
 #
 nudge_XY <- function(df, x, y){
-  
+  df$X1 <- df[,x]
+  df$Y1 <- df[,y]
   # create sf from df
-  sf <- st_as_sf(df, coords = c(x, y), crs = 5070, agr = "constant")
   
+  sf <- st_as_sf(df, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
+
   # Approximate pie size for each plot
-  sf <- sf %>% mutate(fig_radius = case_when(totreg_std2 > 0.75 ~ totreg_std2*150,
-                                             between(totreg_std2, 0.4, 0.75) ~ totreg_std2*175, 
-                                             between(totreg_std2, 0.25, 0.4) ~ totreg_std2*275,
-                                             totreg_std2 < 0.25 ~ totreg_std2*300))
+  sf <- sf %>% mutate(fig_radius = (totreg_std2 + 2*sqrt(totreg_std2))*100)
   
   # Calculate the distance between the closest points. Take only the closest point
   # st_distance returns an array. Have to do a lot of munging to get the wanted format
   df_dist <- st_distance(sf) %>% data.frame() %>% set_names(plot_list) %>% #distance b/t points
-    mutate(Plot_Name = plot_list) %>% select(Plot_Name, everything()) %>% 
+    mutate(Plot_Name = plot_list) %>% 
+    select(Plot_Name, everything()) %>% 
     pivot_longer(cols = c(-Plot_Name), names_to = "closest_plot", values_to = 'dist') %>% 
     filter(Plot_Name != closest_plot) %>% #remove plot pairs that are 0
     group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(1) %>% # slice the 1 closest point
@@ -48,35 +48,40 @@ nudge_XY <- function(df, x, y){
                                 angle = acos(abs(diff_x)/dist)*(180/pi),
                                 dir = dir_x + dir_y,
                                 tot_radius = fig_radius + fig_radius2) %>% 
-    select(-dir, -fig_radius)
+                         select(-dir, -fig_radius)
   
+  names(df_geom)
+  names(sf)
   df_geom_rad <- left_join(df_geom, st_drop_geometry(sf), by = "Plot_Name")
+  names(df_geom_rad)
   
   # Convert final output to sf based on original plot coords
+  
   sf_geom_rad <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
   
   # # Create buffer to be similar to the size of pies. Use for checking plot overlap
-  sf_buff <- st_buffer(sf_geom_rad, sf_geom_rad$fig_radius)
+  #sf_buff <- st_buffer(sf_geom_rad, sf_geom_rad$fig_radius)
   
-  plots_to_shift <- check_overlap(sf_buff)
+  #plots_to_shift <- check_overlap(sf_buff)
+  plots_to_shift <- check_overlap(sf_geom_rad)
   
-  sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
+  #sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
   
-  df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse((fig_radius + fig_radius2) - dist > 0,
-                                                       (fig_radius + fig_radius2) - dist, 0), 
+  df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
+                                                       0.9*((fig_radius + fig_radius2) - dist), 0), #shift slightly more than dist 
                                         X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          X1 + dir_x*(sin(angle*pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-                                                         Y1 + dir_x*(cos(angle*pi/180))*shift, Y1)) %>% 
+                                                         Y1 + dir_y*(cos(angle*pi/180))*shift, Y1)) %>% 
                                  select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:totreg_std2, fig_radius) %>% 
                                  rename(X_orig = X1, Y_orig = Y1)
   
   #df_check <- df_geom_rad[,c(1:5,29:30,6:15,27,28)]
   
   sf_final <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = 5070) 
-  sf_final_buff <- st_buffer(sf_final, sf_final$fig_radius)
+  #sf_final_buff <- st_buffer(sf_final, sf_final$fig_radius)
   
-  check_overlap(sf_final_buff)
+  check_overlap(sf_final)
   
   if(nrow(check_overlap(sf_final))==0){
     cat("Pies are ready to plot using X_Nudge and Y_Nudge as coordinates.")
