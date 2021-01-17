@@ -10,8 +10,8 @@ library(forestNETN)
 library(egg) # for set_panel_size; expose ggplot layout
 
 #----- Set up park controls -----
-park_code <- 'MORR'
-park_long_name = "Saratoga National Historical Park"
+park_code <- 'SARA'
+#park_long_name = "Saratoga National Historical Park"
 park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
 } else {"+init=epsg:26918"}
 
@@ -187,8 +187,8 @@ map1 <- basemap + tm_shape(reg_sf_alb) +
              #size.max = 1, jitter = 0.5, xmod = 0.1, ymod = 0.1, scale = 1.2,
              group = "Charts",
              shapes = pie_list, 
-             grob.dim = c(width = 48, height = 48, 
-                          render.width = 256, render.height = 256),
+             # grob.dim = c(width = 48, height = 48, 
+             #              render.width = 256, render.height = 256),
              border.col = NA, border.lwd = NA)+
   tm_text("Plot_Number", size = 0.8)+
   tm_legend(show = FALSE) + tm_compass(size = 2) + tm_scale_bar()#+
@@ -197,7 +197,8 @@ map1 <- basemap + tm_shape(reg_sf_alb) +
 
 map1
 
-map2 <- basemap + tm_shape(test_sf) +
+
+map2 <- basemap + tm_shape(test_sf %>% arrange(-fig_radius)) +
           tm_symbols(#size = "totreg_std2", 
                      shape = "Plot_Name",
                      #icon.scale = 10,
@@ -210,11 +211,11 @@ map2 <- basemap + tm_shape(test_sf) +
                      border.col = NA, border.lwd = NA)+
           tm_text("Plot_Number", size = 0.8)+
           tm_legend(show = FALSE) + tm_compass(size = 2) + tm_scale_bar()#+
-          # tm_shape(st_buffer(test_x_sf, test_x_sf$fig_radius))+
-          # tm_borders(col = 'red')
+           # tm_shape(st_buffer(test_sf, test_sf$fig_radius))+
+           # tm_borders(col = 'red')
 map2
-?tm_symbols
-tmap_arrange(map1, map2)
+
+#tmap_arrange(map1, map2)
 tmap_save(map1, width = 8.5, height = 11, units = 'in', dpi = 600, filename = paste0(park_code, "_regen.png"))
 tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge30.png"))
 

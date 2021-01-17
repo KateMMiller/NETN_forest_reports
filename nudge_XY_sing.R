@@ -68,18 +68,10 @@ nudge_XY_sing <- function(df, x, y){
   
   #sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
   
-  # df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-  #                                                      0.6*((fig_radius + fig_radius2) - dist), 0), #shift slightly more than dist 
-  #                                       X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-  #                                                        X1 + dir_x*(sin(angle*pi/180))*shift, X1),
-  #                                       Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-  #                                                        Y1 + dir_y*(cos(angle*pi/180))*shift, Y1)) %>% 
-  #                                select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:totreg_std2, fig_radius) %>% 
-  #                                rename(X_orig = X1, Y_orig = Y1)
+  ran_angle <- sample(c(0, 0, 0, -45, -90, 45, 90, 180, -180), 1) #add random noise if pie gets stuck 
   
-  ran_angle <- runif(1, -10, 10)
   df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-                                                       0.8*((fig_radius + fig_radius2) - dist), 0), #shift slightly more than dist 
+                                                       0.9*((fig_radius + fig_radius2) - dist), 0), #shift slightly more than dist 
                                         X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          X1 + dir_x*(sin((ran_angle+angle)*pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
