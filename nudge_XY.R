@@ -7,14 +7,14 @@
 # Using CRS 5070 (UTM albers). Returns a data.frame with nudged coordinates
 #   - consider adding crs as an argument, but keep it in UTM
 #
-nudge_XY <- function(df, x, y, max_iter = 5){
+nudge_XY <- function(df, x, y, stdvar, max_iter = 5){
   runs <- 0
   num_overlap <- 1
   orig_df_XY <- df[ , c("Plot_Name", x, y)] %>% set_names("Plot_Name", "X_orig", "Y_orig")
   
   
   while(num_overlap > 0 && runs < max_iter){
-    sf_nudge <- nudge_XY_sing(df, x, y)
+    sf_nudge <- nudge_XY_sing(df, x, y, runs = runs, stdvar)
   
     num_overlap <- nrow(check_overlap(sf_nudge))
     overlaps <- c(check_overlap(sf_nudge))

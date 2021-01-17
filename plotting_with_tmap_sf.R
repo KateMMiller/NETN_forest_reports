@@ -163,12 +163,12 @@ reg_sf <- st_as_sf(reg_df, coords = c("X", "Y"), crs = 5070)
 reg_sf <- st_buffer(reg_sf, reg_sf$fig_radius)
 plot(reg_sf[2])
 
-test <- nudge_XY(reg_df, x = "X", y = "Y", 30)
+test <- nudge_XY(reg_df, x = "X", y = "Y", stdvar = "totreg_std2", 30 )
 test_sf <- st_as_sf(test, coords = c("X_nudge", "Y_nudge"), crs = 5070)
-# test_sf <- st_buffer(test_sf, test_sf$fig_radius)
+test_sf_buff <- st_buffer(test_sf, test_sf$fig_radius)
 
 plot(reg_sf[2])
-plot(test_sf[1])
+plot(test_sf_buff[1])
 #----------------------
 
 # Plot data

@@ -7,16 +7,18 @@
 # Using CRS 5070 (UTM albers). Returns a data.frame with nudged coordinates
 #   - consider adding crs as an argument, but keep it in UTM
 #
-nudge_XY_sing <- function(df, x, y){
+nudge_XY_sing <- function(df, x, y, runs, stdvar){
+  if(!exists('runs')){runs = 1}
   
   df$X1 <- df[,x]
   df$Y1 <- df[,y]
+  df$std_var <- df[, stdvar]
   # create sf from df
   
   sf <- st_as_sf(df, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
 
   # Approximate pie size for each plot
-  sf <- sf %>% mutate(fig_radius = (totreg_std2 + 1.5*sqrt(totreg_std2))*100)
+  sf <- sf %>% mutate(fig_radius = std_var + (2*sqrt(std_var))*100)
   
   # Calculate the distance between the closest points. Take only the closest point
   # st_distance returns an array. Have to do a lot of munging to get the wanted format
@@ -68,15 +70,17 @@ nudge_XY_sing <- function(df, x, y){
   
   #sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
   
-  ran_angle <- sample(c(0, 0, 0, -45, -90, 45, 90, 180, -180), 1) #add random noise if pie gets stuck 
-  
+  ran_angle <- ifelse(runs > 3, 
+                      sample(c(rep(0,5), -45, 45, -90, 90, 180, -180), 1),
+                      0) #add random noise if pie gets stuck after 3 runs, but still bias towards 0
+
   df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                        0.9*((fig_radius + fig_radius2) - dist), 0), #shift slightly more than dist 
                                         X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          X1 + dir_x*(sin((ran_angle+angle)*pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          Y1 + dir_y*(cos((ran_angle+angle)*pi/180))*shift, Y1)) %>% 
-    select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:totreg_std2, fig_radius) %>% 
+    select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:std_var, fig_radius) %>% 
     rename(X_orig = X1, Y_orig = Y1)
   #df_check <- df_geom_rad[,c(1:5,29:30,6:15,27,28)]
   
