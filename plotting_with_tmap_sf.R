@@ -10,7 +10,7 @@ library(forestNETN)
 library(egg) # for set_panel_size; expose ggplot layout
 
 #----- Set up park controls -----
-park_code <- "SARA"#'MORR'
+park_code <- 'MORR'
 park_long_name = "Saratoga National Historical Park"
 park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
 } else {"+init=epsg:26918"}
@@ -144,8 +144,6 @@ pie_fun <- function(df, plotname, y_var, grp_var, std_var){
   }
 
 # Create list of pie charts by plot_list
-test <- pie_fun(reg_long2, "SARA-029", y_var = dens, grp_var = size_class, std_var = "totreg_std2")
-plot(test)
 
 pie_list <- map(plot_list, ~pie_fun(reg_long2, .x, y_var = dens, 
                                     grp_var = size_class, std_var = "totreg_std2")) %>% 
@@ -165,36 +163,12 @@ reg_sf <- st_as_sf(reg_df, coords = c("X", "Y"), crs = 5070)
 reg_sf <- st_buffer(reg_sf, reg_sf$fig_radius)
 plot(reg_sf[2])
 
-test <- nudge_XY(reg_df, x = "X", y = "Y")
+test <- nudge_XY(reg_df, x = "X", y = "Y", 30)
 test_sf <- st_as_sf(test, coords = c("X_nudge", "Y_nudge"), crs = 5070)
-test_sf <- st_buffer(test_sf, test_sf$fig_radius)
-
-test1 <- nudge_XY(test, x = "X_nudge", y = "Y_nudge")
-test2 <- nudge_XY(test1, x = "X_nudge", y = "Y_nudge")
-test3 <- nudge_XY(test2, x = "X_nudge", y = "Y_nudge")
-test4 <- nudge_XY(test3, x = "X_nudge", y = "Y_nudge")
-test5 <- nudge_XY(test4, x = "X_nudge", y = "Y_nudge")
-
-test1_sf <- st_buffer(st_as_sf(test1, coords = c("X_nudge", "Y_nudge"), crs = 5070), test1_sf$fig_radius)
-test2_sf <- st_buffer(st_as_sf(test2, coords = c("X_nudge", "Y_nudge"), crs = 5070), test2_sf$fig_radius)
-test3_sf <- st_buffer(st_as_sf(test3, coords = c("X_nudge", "Y_nudge"), crs = 5070), test3_sf$fig_radius)
-test4_sf <- st_buffer(st_as_sf(test4, coords = c("X_nudge", "Y_nudge"), crs = 5070), test4_sf$fig_radius)
-test5_sf <- st_as_sf(test5, coords = c("X_nudge", "Y_nudge"), crs = 5070)
-test5_sf <- st_buffer(test5_sf, test5_sf$fig_radius)
+# test_sf <- st_buffer(test_sf, test_sf$fig_radius)
 
 plot(reg_sf[2])
-plot(test1_sf[1])
-plot(test2_sf[1])
-plot(test3_sf[1])
-plot(test4_sf[1])
-plot(test5_sf[1])
-
-test_x_sf <- st_as_sf(test5, coords = c("X_nudge", "Y_nudge"), crs = 5070)
-check_overlap(test_x_sf)
-
-plot(reg_sf[1])
-plot(test_sf[2])
-
+plot(test_sf[1])
 #----------------------
 
 # Plot data
@@ -223,7 +197,7 @@ map1 <- basemap + tm_shape(reg_sf_alb) +
 
 map1
 
-map2 <- basemap + tm_shape(test_x_sf) +
+map2 <- basemap + tm_shape(test_sf) +
           tm_symbols(#size = "totreg_std2", 
                      shape = "Plot_Name",
                      #icon.scale = 10,
@@ -241,8 +215,8 @@ map2 <- basemap + tm_shape(test_x_sf) +
 map2
 ?tm_symbols
 tmap_arrange(map1, map2)
-tmap_save(map1, width = 8.5, height = 11, units = 'in', dpi = 600, filename = paste0(park_name, "_regen.png"))
-tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_name, "_regen_nudge.png"))
+tmap_save(map1, width = 8.5, height = 11, units = 'in', dpi = 600, filename = paste0(park_code, "_regen.png"))
+tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge30.png"))
 
 
 # tmap_save(tm_grid, width = 11, height = 8.5, units = 'in', dpi = 600, filename = "MORR_regen.png")
