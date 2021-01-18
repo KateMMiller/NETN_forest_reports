@@ -6,6 +6,8 @@
 # x and y are quoted coordinates, df is the dataframe to turn into simple feature
 # Using CRS 5070 (UTM albers). Returns a data.frame with nudged coordinates
 #   - consider adding crs as an argument, but keep it in UTM
+#   - consider inputting sf and outputting sf instead of df to sf to df, or make it an argument
+#   - add quietly = T/F so you can turn the chatter on/off in console
 #
 nudge_XY <- function(df, x, y, stdvar, max_iter = 5){
   runs <- 0
