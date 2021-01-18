@@ -49,7 +49,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
                                 diff_y = Y1 - Y2,
                                 dir_x = ifelse(diff_x > 0, 1, -1), 
                                 dir_y = ifelse(diff_y > 0, 1, -1), 
-                                angle = acos(abs(diff_x)/dist)*(180/pi),
+                                angle = asin(abs(diff_x)/dist)*(180/pi),
                                 tot_radius = fig_radius + fig_radius2) %>% 
                          select(-fig_radius)
 
