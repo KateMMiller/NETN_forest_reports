@@ -18,16 +18,18 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   sf <- st_as_sf(df, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
 
   # Approximate pie size for each plot
-  sf <- sf %>% mutate(fig_radius = std_var + (2*sqrt(std_var))*100)
+  #sf <- sf %>% mutate(fig_radius = std_var + (2*sqrt(std_var))*100)
   
   # Calculate the distance between the closest points. Take only the closest point
   # st_distance returns an array. Have to do a lot of munging to get the wanted format
+  slice_num <- ifelse(runs > 4, sample(c(1, 2),1), 1)
+  
   df_dist <- st_distance(sf) %>% data.frame() %>% set_names(plot_list) %>% #distance b/t points
     mutate(Plot_Name = plot_list) %>% 
     select(Plot_Name, everything()) %>% 
     pivot_longer(cols = c(-Plot_Name), names_to = "closest_plot", values_to = 'dist') %>% 
     filter(Plot_Name != closest_plot) %>% #remove plot pairs that are 0
-    group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(1) %>% # slice the 1 closest point
+    group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(slice_num) %>% # slice the 1 or 2 closest point
     ungroup() 
   
   # Set up coordinates for each plot
@@ -52,12 +54,9 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
                                 dir = dir_x + dir_y,
                                 tot_radius = fig_radius + fig_radius2) %>% 
                          select(-dir, -fig_radius)
-  
-  names(df_geom)
-  names(sf)
+
   df_geom_rad <- left_join(df_geom, st_drop_geometry(sf), by = "Plot_Name")
-  names(df_geom_rad)
-  
+
   # Convert final output to sf based on original plot coords
   
   sf_geom_rad <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
@@ -71,7 +70,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   #sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
   
   ran_angle <- ifelse(runs > 3, 
-                      sample(c(rep(0,5), -45, 45, -90, 90, 180, -180), 1),
+                      sample(c(rep(0,4), -45, 45, -90, 90, 180, -180), 1),
                       0) #add random noise if pie gets stuck after 3 runs, but still bias towards 0
 
   df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
