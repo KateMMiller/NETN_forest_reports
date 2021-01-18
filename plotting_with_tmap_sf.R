@@ -3,11 +3,18 @@
 #-----------------------
 library(tmap)
 library(sf)
-#library(rworldmap) # for mapPies
 library(tidyverse)
 library(forestNETN)
-#library(gtable) # for viewing grobs
 library(egg) # for set_panel_size; expose ggplot layout
+
+source("nudge_XY.R")
+source("nudge_XY_sing.R")
+source("check_overlap.R")
+#----- Next Steps -----
+# 1. Set up markdown park templates, so MIMA and ROVA can be 2 layouts and ACAD can be 3
+# 2. Add none symbol to pie_list for 0s
+# 3. Set up for ACAD
+# 4. Set up GIS layers for MIDN parks
 
 #----- Set up park controls -----
 park_code <- 'SARA'
@@ -18,11 +25,11 @@ park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
 
 #----- Load spatial data -----
 bounds <- st_read("./shapefiles/NETN_park_bounds_albers.shp")
-st_crs(bounds) #5070
+#st_crs(bounds) #5070
 vegmap <- st_read("./shapefiles/NETN_vegmap_simplified_albers.shp")
-st_crs(vegmap) #5070
+#st_crs(vegmap) #5070
 plots <- st_read("./shapefiles/NETN_forest_plots_albers.shp")
-st_crs(plots) #5070
+#st_crs(plots) #5070
 
 # Columns that specify map controls
 map_controls <- read.csv("./shapefiles/map_controls.csv")
@@ -119,7 +126,7 @@ pie_fun <- function(df, plotname, y_var, grp_var, std_var){
   df2 <- df[df$Plot_Name == plotname,] %>% ungroup()
   pie_exp1 <- df2 %>% select(!!std_var) %>% unique() %>% as.numeric()
   pie_exp <- pie_exp1 + 2*sqrt(pie_exp1)
-  print(pie_exp)
+  
   g <- ggplotGrob(
          ggplot(df2, aes(x = "", y = !!y_var, 
                 group = !!grp_var, fill = !!grp_var))+
@@ -161,9 +168,10 @@ reg_sf_alb <- st_transform(reg_sf, crs = 5070)
 reg_df <- cbind(st_drop_geometry(reg_sf_alb), st_coordinates(reg_sf_alb))
 reg_sf <- st_as_sf(reg_df, coords = c("X", "Y"), crs = 5070)
 reg_sf <- st_buffer(reg_sf, reg_sf$fig_radius)
-plot(reg_sf[2])
+check_overlap(reg_sf)
 
-test <- nudge_XY(reg_df, x = "X", y = "Y", stdvar = "totreg_std2", 30 )
+plot(reg_sf[2])
+test <- nudge_XY(reg_df, x = "X", y = "Y", stdvar = "totreg_std2", 30) #SAGA isn't working
 test_sf <- st_as_sf(test, coords = c("X_nudge", "Y_nudge"), crs = 5070)
 test_sf_buff <- st_buffer(test_sf, test_sf$fig_radius)
 
@@ -216,26 +224,21 @@ map2 <- basemap + tm_shape(test_sf %>% arrange(-fig_radius)) +
 map2
 
 #tmap_arrange(map1, map2)
+# landscape
+#tmap_save(map1, width = 11, height = 8.5, units = 'in', dpi = 600, filename = paste0(park_code, "_regen.png"))
+#tmap_save(map2, width = 11, height = 8.5, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge30.png"))
+
+#portrait
 tmap_save(map1, width = 8.5, height = 11, units = 'in', dpi = 600, filename = paste0(park_code, "_regen.png"))
 tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge30.png"))
 
 
-# tmap_save(tm_grid, width = 11, height = 8.5, units = 'in', dpi = 600, filename = "MORR_regen.png")
-# tmap_save(tm_grid, width = 13.75, height = 10.625, units = "in", dpi = 600, filename = "MORR_regen2.png")
-
-# map2 +   tm_shape(reg_sf_alb %>% filter(totreg_m2 == 0))+
-#          tm_symbols(shape = 24, size = 0.4, col = "#ff7f00")
-
-# reg_sf_alb <- reg_sf_alb %>% mutate(bub_size = totreg_std2)
-# head(reg_sf_alb)
-
-map2 + tm_shape(reg_sf_alb %>% filter(totreg_m2 > 0))+
-       tm_bubbles(size =  "totreg_std2",
-                  shape = 21,
-                  #size.lim = c(0, 0.1),
-                  scale = 2,
-                  alpha = 0,
-                  border.col = 'black')
-
-?tm_bubbles
-?tm_symbols
+# 
+# map2 + tm_shape(reg_sf_alb %>% filter(totreg_m2 > 0))+
+#        tm_bubbles(size =  "totreg_std2",
+#                   shape = 21,
+#                   #size.lim = c(0, 0.1),
+#                   scale = 2,
+#                   alpha = 0,
+#                   border.col = 'black')
+# 
