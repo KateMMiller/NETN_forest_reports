@@ -17,6 +17,7 @@ importData()
 # 2. Add none symbol to pie_list for 0s
 # 3. Set up for ACAD
 # 4. Set up GIS layers for MIDN parks
+# 5. Add std. var step in functions, rather than calculating outside
 
 #----- Set up park controls -----
 park_code <- "MORR"
@@ -65,8 +66,6 @@ intersect(names(park_veg), names(veg_colors))
 park_veg <- left_join(park_veg, veg_colors, by = "veg_type") # merge shapefile and colors for each veg_type
 
 #----- Prep forest data -----
-
-
 reg <- joinRegenData(park = park_code, speciesType = "native", canopyForm = 'all', 
                      from = 2016, to = 2019)
 
@@ -173,12 +172,14 @@ reg_sf <- st_buffer(reg_sf, reg_sf$fig_radius)
 check_overlap(reg_sf)
 
 plot(reg_sf[2])
-test <- nudge_XY(reg_df, x = "X", y = "Y", stdvar = "totreg_std2", 30) #SAGA isn't working
+nums <- 30
+test <- nudge_XY(reg_df, x = "X", y = "Y", stdvar = "totreg_std2", nums) #SAGA isn't working
 test_sf <- st_as_sf(test, coords = c("X_nudge", "Y_nudge"), crs = 5070) # Too extreme for MABI
 test_sf_buff <- st_buffer(test_sf, test_sf$fig_radius)
 
 plot(reg_sf[2])
 plot(test_sf_buff[1])
+
 #----------------------
 
 # Plot data
@@ -232,7 +233,7 @@ map2
 
 #portrait
 tmap_save(map1, width = 8.5, height = 11, units = 'in', dpi = 600, filename = paste0(park_code, "_regen.png"))
-tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge.png"))
+tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge2.png"))
 
 
 # 
