@@ -21,14 +21,15 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
 
   # Calculate the distance between the closest points. Take only the closest point
   # st_distance returns an array. Have to do a lot of munging to get the wanted format
-  #slice_num <- ifelse(runs > 10, sample(c(1, 2),1), 1)
+  
+  slice_num <- ifelse(runs > 20, sample(c(1, 2), 1), 1)
   
   df_dist <- st_distance(sf) %>% data.frame() %>% set_names(plot_list) %>% #distance b/t points
     mutate(Plot_Name = plot_list) %>% 
     select(Plot_Name, everything()) %>% 
     pivot_longer(cols = c(-Plot_Name), names_to = "closest_plot", values_to = 'dist') %>% 
     filter(Plot_Name != closest_plot) %>% #remove plot pairs that are 0
-    group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(1) %>% # slice(slice_num) slice the 1 or 2 closest point
+    group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(slice_num) %>% # slice the 1 or 2 closest point
     ungroup() 
   
   # Set up coordinates for each plot
@@ -66,12 +67,12 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   plots_to_shift <- check_overlap(sf_geom_rad)
   
   #sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
-  
-  ran_angle <- ifelse(runs > 10, 
-                      sample(c(rep(0,4), -45, 45, -90, 90, -180, 180), 1),
-                      0) #add random noise if pie gets stuck after 10 runs, but still bias towards 0
-  inc_dist <- if(runs > 20){1.2
-              } else if(runs < 20 && runs > 10){0.9
+  ran_angle = 0
+  # ran_angle <- ifelse(runs > 10, 
+  #                     sample(c(rep(0,4), -45, 45, -90, 90, -180, 180), 1),
+  #                     0) #add random noise if pie gets stuck after 10 runs, but still bias towards 0
+  inc_dist <- if(runs > 20){0.8
+              } else if(runs < 20 && runs > 10){0.6
               } else{0.5}
 
   df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
