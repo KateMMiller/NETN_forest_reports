@@ -10,6 +10,8 @@ library(egg) # for set_panel_size; expose ggplot layout
 source("nudge_XY.R")
 source("nudge_XY_sing.R")
 source("check_overlap.R")
+
+importData()
 #----- Next Steps -----
 # 1. Set up markdown park templates, so MIMA and ROVA can be 2 layouts and ACAD can be 3
 # 2. Add none symbol to pie_list for 0s
@@ -17,7 +19,7 @@ source("check_overlap.R")
 # 4. Set up GIS layers for MIDN parks
 
 #----- Set up park controls -----
-park_code <- 'SARA'
+park_code <- "MORR"
 #park_long_name = "Saratoga National Historical Park"
 park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
 } else {"+init=epsg:26918"}
@@ -63,7 +65,7 @@ intersect(names(park_veg), names(veg_colors))
 park_veg <- left_join(park_veg, veg_colors, by = "veg_type") # merge shapefile and colors for each veg_type
 
 #----- Prep forest data -----
-importData()
+
 
 reg <- joinRegenData(park = park_code, speciesType = "native", canopyForm = 'all', 
                      from = 2016, to = 2019)
@@ -82,7 +84,7 @@ diff_totreg <- diff(range(reg2$totreg_m2))
 
 reg2 <- reg2 %>% mutate(totreg_std = (reg2$totreg_m2 - min_totreg) / (diff_totreg),
                         totreg_std2 = ifelse(totreg_std < 0.1, 0.1, totreg_std),
-                        pie_exp = totreg_std2 + 2*sqrt(totreg_std2)
+                        pie_exp = totreg_std2 + 1.5*sqrt(totreg_std2)
 )
 
 head(map_controls)
@@ -125,7 +127,7 @@ pie_fun <- function(df, plotname, y_var, grp_var, std_var){
 
   df2 <- df[df$Plot_Name == plotname,] %>% ungroup()
   pie_exp1 <- df2 %>% select(!!std_var) %>% unique() %>% as.numeric()
-  pie_exp <- pie_exp1 + 2*sqrt(pie_exp1)
+  pie_exp <- pie_exp1 + 1.5*sqrt(pie_exp1)
   
   g <- ggplotGrob(
          ggplot(df2, aes(x = "", y = !!y_var, 
@@ -172,7 +174,7 @@ check_overlap(reg_sf)
 
 plot(reg_sf[2])
 test <- nudge_XY(reg_df, x = "X", y = "Y", stdvar = "totreg_std2", 30) #SAGA isn't working
-test_sf <- st_as_sf(test, coords = c("X_nudge", "Y_nudge"), crs = 5070)
+test_sf <- st_as_sf(test, coords = c("X_nudge", "Y_nudge"), crs = 5070) # Too extreme for MABI
 test_sf_buff <- st_buffer(test_sf, test_sf$fig_radius)
 
 plot(reg_sf[2])
@@ -218,9 +220,9 @@ map2 <- basemap + tm_shape(test_sf %>% arrange(-fig_radius)) +
                                   render.width = 256, render.height = 256),
                      border.col = NA, border.lwd = NA)+
           tm_text("Plot_Number", size = 0.8)+
-          tm_legend(show = FALSE) + tm_compass(size = 2) + tm_scale_bar()#+
-           # tm_shape(st_buffer(test_sf, test_sf$fig_radius))+
-           # tm_borders(col = 'red')
+          tm_legend(show = FALSE) + tm_compass(size = 2) + tm_scale_bar()+
+            tm_shape(st_buffer(test_sf, test_sf$fig_radius))+
+            tm_borders(col = 'red')
 map2
 
 #tmap_arrange(map1, map2)
@@ -230,7 +232,7 @@ map2
 
 #portrait
 tmap_save(map1, width = 8.5, height = 11, units = 'in', dpi = 600, filename = paste0(park_code, "_regen.png"))
-tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge30.png"))
+tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge.png"))
 
 
 # 

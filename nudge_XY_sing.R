@@ -18,18 +18,17 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   sf <- st_as_sf(df, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
 
   # Approximate pie size for each plot
-  #sf <- sf %>% mutate(fig_radius = std_var + (2*sqrt(std_var))*100)
-  
+
   # Calculate the distance between the closest points. Take only the closest point
   # st_distance returns an array. Have to do a lot of munging to get the wanted format
-  slice_num <- ifelse(runs > 4, sample(c(1, 2),1), 1)
+  #slice_num <- ifelse(runs > 10, sample(c(1, 2),1), 1)
   
   df_dist <- st_distance(sf) %>% data.frame() %>% set_names(plot_list) %>% #distance b/t points
     mutate(Plot_Name = plot_list) %>% 
     select(Plot_Name, everything()) %>% 
     pivot_longer(cols = c(-Plot_Name), names_to = "closest_plot", values_to = 'dist') %>% 
     filter(Plot_Name != closest_plot) %>% #remove plot pairs that are 0
-    group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(slice_num) %>% # slice the 1 or 2 closest point
+    group_by(Plot_Name) %>% arrange(Plot_Name, dist) %>% slice(1) %>% # slice(slice_num) slice the 1 or 2 closest point
     ungroup() 
   
   # Set up coordinates for each plot
@@ -48,12 +47,11 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   # Add nudge angles for each closet pair
   df_geom <- df_geom %>% mutate(diff_x = X1 - X2,
                                 diff_y = Y1 - Y2,
-                                dir_x = ifelse(diff_x > 0, 1, -1),
-                                dir_y = ifelse(diff_y > 0, 1, -1),
+                                dir_x = ifelse(diff_x > 0, 1, -1), 
+                                dir_y = ifelse(diff_y > 0, 1, -1), 
                                 angle = acos(abs(diff_x)/dist)*(180/pi),
-                                dir = dir_x + dir_y,
                                 tot_radius = fig_radius + fig_radius2) %>% 
-                         select(-dir, -fig_radius)
+                         select(-fig_radius)
 
   df_geom_rad <- left_join(df_geom, st_drop_geometry(sf), by = "Plot_Name")
 
@@ -69,16 +67,19 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   
   #sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
   
-  ran_angle <- ifelse(runs > 3, 
-                      sample(c(rep(0,4), -45, 45, -90, 90, 180, -180), 1),
-                      0) #add random noise if pie gets stuck after 3 runs, but still bias towards 0
+  ran_angle <- ifelse(runs > 10, 
+                      sample(c(rep(0,4), -45, 45, -90, 90, -180, 180), 1),
+                      0) #add random noise if pie gets stuck after 10 runs, but still bias towards 0
+  inc_dist <- if(runs > 20){1.2
+              } else if(runs < 20 && runs > 10){0.9
+              } else{0.5}
 
   df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-                                                       0.9*((fig_radius + fig_radius2) - dist), 0), #shift slightly more than dist 
+                                                       inc_dist*((fig_radius + fig_radius2) - dist), 0), #slightly more than half dist
                                         X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-                                                         X1 + dir_x*(sin((ran_angle+angle)*pi/180))*shift, X1),
+                                                         X1 + dir_x*sin((ran_angle+angle)*(pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-                                                         Y1 + dir_y*(cos((ran_angle+angle)*pi/180))*shift, Y1)) %>% 
+                                                         Y1 + dir_y*cos((ran_angle+angle)*(pi/180))*shift, Y1)) %>% 
     select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:std_var, fig_radius) %>% 
     rename(X_orig = X1, Y_orig = Y1)
   #df_check <- df_geom_rad[,c(1:5,29:30,6:15,27,28)]
