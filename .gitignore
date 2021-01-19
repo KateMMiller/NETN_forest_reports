@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+old_files/
+html_files/
+figures/
+shapefiles/
+random_testing_lines.R
