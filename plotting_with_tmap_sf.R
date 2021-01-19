@@ -15,7 +15,7 @@ importData()
 #----- Next Steps -----
 # 1. Set up markdown park templates, so MIMA and ROVA can be 2 layouts and ACAD can be 3
 # 2. Add none symbol to pie_list for 0s
-# 3. Set up for ACAD
+# 3. Figure out scale, so pies are scaled properly for small and big parks
 # 4. Set up GIS layers for MIDN parks
 # 5. Add std. var step in functions, rather than calculating outside
 
