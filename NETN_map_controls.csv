@@ -1,0 +1,30 @@
+values,x,y,breaks,group,labels,fills,shapes,sizes
+sd15_30,1,1,sd15_30,reg_size,Seedlings 15 – 30 cm,#D6D6FF,22,5
+sd30_100,2,2,sd30_100,reg_size,Seedlings 30 – 100 cm,#8F97E3,22,5
+sd100_150,3,3,sd100_150,reg_size,Seedlings 100 – 150 cm,#556CC9,22,5
+sd150p,4,4,sd150p,reg_size,Seedlings >150 cm,#244EAD,22,5
+sap,5,5,sap,reg_size,Saplings 1 – 9.9cm DBH,#05e636,22,5
+MABI,6,6,MABI,reg_size,None present,#ff7f00,24,3
+Conifer forest,7,7,Conifer forest,veg,Conifer forest,#a0725e,NA,NA
+Conifer plantation,8,8,Conifer plantation,veg,Conifer plantation,#b39267,NA,NA
+Hardwood forest,9,9,Hardwood forest,veg,Hardwood forest,#7ea46b,NA,NA
+Mixed forest,10,10,Mixed forest,veg,Mixed forest,#55785e,NA,NA
+Forested wetland,11,11,Forested wetland,veg,Forested wetland,#9577a6,NA,NA
+Developed,12,12,Developed,veg,Developed Lands,#c2c2c2,NA,NA
+Open field,13,13,Open field,veg,Open field,#f5f0b0,NA,NA
+Open water,14,14,Open water,veg,Open water,#9bd2ef,NA,NA
+Open wetland,15,15,Open wetland,veg,Open wetland,#c497d4,NA,NA
+Successional forest,16,16,Successional forest,veg,Successional forest,#bbdd97,NA,NA
+Shrubland,17,17,Shrubland,veg,Shrubland,#efc46d,NA,NA
+Salt marsh,18,18,Salt marsh,veg,Salt marsh,#37b0a5,NA,NA
+MABI,19,19,MABI,veg,Park Boundary,NA,NA,NA
+cycle1,20,20,cycle1,reg_cycle,Cycle 1: 2007 – 2010,#9fabd7,22,5
+cycle2,21,21,cycle2,reg_cycle,Cycle 2: 2011 – 2014,#6a79cb,22,5
+cycle3,22,22,cycle3,reg_cycle,Cycle 3: 2015 – 2018,#49538a,22,5
+cycle4,23,23,cycle4,reg_cycle,Cycle 4: 2019,#05e646,22,5
+MABI,24,24,MABI,reg_cycle,None present,#ff7f00,24,3
+MABI,25,25,MABI,inv_cycle,None present,#83F583,24,3
+cycle1,26,26,cycle1,inv_cycle,Cycle 1: 2007 – 2010,#9fabd7,22,5
+cycle2,27,27,cycle2,inv_cycle,Cycle 2: 2011 – 2014,#6a79cb,22,5
+cycle3,28,28,cycle3,inv_cycle,Cycle 3: 2015 – 2018,#49538a,22,5
+cycle4,29,29,cycle4,inv_cycle,Cycle 4: 2019,#05e646,22,5
