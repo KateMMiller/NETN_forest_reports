@@ -9,7 +9,8 @@
 #   - consider inputting sf and outputting sf instead of df to sf to df, or make it an argument
 #   - add quietly = T/F so you can turn the chatter on/off in console
 #
-nudge_XY <- function(df, x, y, stdvar, max_iter = 5){
+
+nudge_XY <- function(df, x, y, stdvar, max_iter = 10){
   runs <- 0
   num_overlap <- 1
   orig_df_XY <- df[ , c("Plot_Name", x, y)] %>% set_names("Plot_Name", "X_orig", "Y_orig")
