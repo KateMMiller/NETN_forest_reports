@@ -116,7 +116,11 @@ invcycle_controls = data.frame(values = c("Cycle 1: 2006 \U2013 2009",
 
 map_controls <- rbind(regsize_controls, regcyc_controls, dbi_controls, stock_controls, invcycle_controls)
 
-write.csv(map_controls, "./shapefiles/map_controls.csv", row.names = FALSE)
+#write.csv(map_controls, "./shapefiles/map_controls.csv", row.names = FALSE)
+
+pie_expfac1 <- data.frame(park_code = c("ACAD", "MABI", "MIMA", "MORR", "ROVA", "SAGA", "SARA", "WEFA"),
+                          pie_expfac = c(700, 50, 80, 80, 80, 25, 90, 22)) #~trial and error based on park's ideal map scale  
+
 
 # controls = data.frame(values = c(),
 #                       x = ,
