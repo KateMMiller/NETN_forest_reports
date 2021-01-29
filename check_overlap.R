@@ -7,7 +7,7 @@
 check_overlap <- function(sf){
   # Create buffer approximately the size of pies. 
   sf_buff <- st_buffer(sf, sf$fig_radius)
-  
+  plot_list <- sort(unique(sf$Plot_Name))
   # Determine pies that overlap
   overlaps1 <- st_drop_geometry(st_intersection(sf_buff)) %>% group_by(Plot_Name) %>%
     summarize(num_overlaps = sum(!is.na(Plot_Name))-1,
