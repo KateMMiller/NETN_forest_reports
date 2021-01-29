@@ -11,10 +11,13 @@
 #
 
 nudge_XY <- function(df, x, y, stdvar, max_iter = 10){
+  # source("nudge_XY_sing.R")
+  # source("check_overlap.R")
   runs <- 0
   num_overlap <- 1
   orig_df_XY <- df[ , c("Plot_Name", x, y)] %>% set_names("Plot_Name", "X_orig", "Y_orig")
   
+  plot_list <- sort(unique(df$Plot_Name))
   
   while(num_overlap > 0 && runs < max_iter){
     sf_nudge <- nudge_XY_sing(df, x, y, runs = runs, stdvar)
@@ -46,9 +49,10 @@ nudge_XY <- function(df, x, y, stdvar, max_iter = 10){
   df_nudge <- cbind(st_drop_geometry(sf_nudge), st_coordinates(sf_nudge)) %>% 
                 set_names(names(st_drop_geometry(sf_nudge)), "X_nudge", "Y_nudge") %>% 
                 select(-X_orig, -Y_orig)
-  
-  df_final <- merge(orig_df_XY, df_nudge, all.x = TRUE, all.y = TRUE)
-  
+
+  df_final <- merge(orig_df_XY, df_nudge, by = "Plot_Name", all.x = TRUE, all.y = TRUE) %>% 
+              select(-X, -Y)
+
   return(df_final)
   }
 
