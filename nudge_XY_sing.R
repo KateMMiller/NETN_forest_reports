@@ -14,6 +14,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   df$Y1 <- df[,y]
   df$std_var <- df[, stdvar]
   # create sf from df
+  plot_list <- sort(unique(df$Plot_Name))
   
   sf <- st_as_sf(df, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
 
@@ -39,11 +40,12 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   # Set up coordinates for each plot's closest neighbor
   df_c2 <- left_join(df_dist[,c("Plot_Name", "closest_plot")], df_c1[,c("Plot_Name", "X1", "Y1", "fig_radius")], 
                      by = c("closest_plot" = "Plot_Name")) %>% 
-    set_names(c("Plot_Name", "closest_plot", "X2", "Y2", "fig_radius2"))
+            set_names(c("Plot_Name", "closest_plot", "X2", "Y2", "fig_radius2"))
   
   # Join coord dfs, to have plot coords and closest neighbor's coords. Convert to numeric
-  df_geom <- full_join(df_c1, df_c2, by = "Plot_Name") %>% select(Plot_Name, closest_plot, everything()) %>% 
-    mutate(across(c(dist, fig_radius, X1, X2, Y1, Y2, fig_radius2), as.numeric)) # all cols were chars
+  df_geom <- full_join(df_c1, df_c2, by = "Plot_Name") %>% 
+             select(Plot_Name, closest_plot, everything()) %>% 
+             mutate(across(c(dist, fig_radius, X1, X2, Y1, Y2, fig_radius2), as.numeric)) # all cols were chars
   
   # Add nudge angles for each closet pair
   df_geom <- df_geom %>% mutate(diff_x = X1 - X2,
@@ -63,17 +65,15 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   # # Create buffer to be similar to the size of pies. Use for checking plot overlap
   #sf_buff <- st_buffer(sf_geom_rad, sf_geom_rad$fig_radius)
   
-  #plots_to_shift <- check_overlap(sf_buff)
   plots_to_shift <- check_overlap(sf_geom_rad)
   
-  #sf_geom_rad2 <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
-  ran_angle = 0
-  # ran_angle <- ifelse(runs > 10, 
-  #                     sample(c(rep(0,4), -45, 45, -90, 90, -180, 180), 1),
-  #                     0) #add random noise if pie gets stuck after 10 runs, but still bias towards 0
+  ran_angle <- ifelse(runs > 10,
+                      sample(c(rep(0,4), -45, 45), 1),
+                      0) # add random noise if pie gets stuck after 10 runs, but still bias towards 0
+  
   inc_dist <- if(runs > 20){0.8
               } else if(runs < 20 && runs > 10){0.6
-              } else{0.5}
+              } else{0.5} # increase shift distance for longer runs of pies get stuck
 
   df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                        inc_dist*((fig_radius + fig_radius2) - dist), 0), #slightly more than half dist
@@ -83,10 +83,9 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
                                                          Y1 + dir_y*cos((ran_angle+angle)*(pi/180))*shift, Y1)) %>% 
     select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:std_var, fig_radius) %>% 
     rename(X_orig = X1, Y_orig = Y1)
-  #df_check <- df_geom_rad[,c(1:5,29:30,6:15,27,28)]
-  
-  sf_final <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = 5070) 
-  #sf_final_buff <- st_buffer(sf_final, sf_final$fig_radius)
-  
-  return(sf_final)
+
+  sf_nudge <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = 5070) 
+
+  return(sf_nudge)
+
   }
