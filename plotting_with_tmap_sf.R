@@ -1,11 +1,13 @@
 #-----------------------
-# Mapping with tmap
+# Source file to load all base layers, import data, and prepare for plotting
 #-----------------------
 library(tmap)
 library(sf)
 library(tidyverse)
 library(forestNETN)
 library(egg) # for set_panel_size; expose ggplot layout
+
+options(scipen = 100, digits = 6)
 
 source("nudge_XY.R")
 source("nudge_XY_sing.R")
@@ -20,10 +22,19 @@ importData()
 # 5. Add std. var step in functions, rather than calculating outside
 
 #----- Set up park controls -----
-park_code <- "MORR"
+park_code <- "ROVA"
 #park_long_name = "Saratoga National Historical Park"
 park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
 } else {"+init=epsg:26918"}
+
+park_layout <- ifelse(park_code %in% c("ACAD", "MABI", "MIMA", "ROVA"), "landscape", "portrait")
+
+pie_min = 0.5 #will be 0.7, actually, which is better
+pie_max = 1.5#2.5
+
+pie_expfac1 <- data.frame(park_code = c("ACAD", "MABI", "MIMA", "MORR", "ROVA", "SAGA", "SARA", "WEFA"),
+                          pie_expfac = c(700, 50, 80, 80, 80, 25, 90, 22)) #~trial and error based on park's ideal map scale  
+pie_expfac <- pie_expfac1$pie_expfac[pie_expfac1$park_code == park_code] #%>% as.numeric()
 
 
 #----- Load spatial data -----
@@ -33,7 +44,15 @@ vegmap <- st_read("./shapefiles/NETN_vegmap_simplified_albers.shp")
 #st_crs(vegmap) #5070
 plots <- st_read("./shapefiles/NETN_forest_plots_albers.shp")
 #st_crs(plots) #5070
+head(plots)
 
+# park_units <- read.csv("./shapefiles/tbl_Alternative_Plot_Labels.csv")
+# head(park_units)
+# 
+# plots <- left_join(plots, park_units[,c("Plot_Name", "Unit")], by = c("Plot_Nm" = "Plot_Name"))
+# st_write(plots, "./shapefiles/NETN_forest_plots_albers.shp", driver = "ESRI Shapefile")
+
+#-----
 # Columns that specify map controls
 map_controls <- read.csv("./shapefiles/map_controls.csv")
 map_controls$values <- factor(map_controls$values,
@@ -52,14 +71,15 @@ veg_colors <- read.csv("./shapefiles/Vegmap_colors.csv")
 head(veg_colors)
 
 # baselayers
+#park_code = "MORR"
+
+#----- Set expansion factors based on scale -----
 park_bound <- bounds[bounds$Park == park_code, ]
 park_veg <- vegmap[vegmap$Park == park_code, ]
 park_plots <- plots[plots$Unit_Cd == park_code, ]
 
-plot(park_bound)
-plot(park_veg)
-plot(park_plots)
-head(map_controls)
+# m_range <- ifelse(park_layout == "landscape", st_bbox(park_bound)$xmax - st_bbox(park_bound)$xmin,
+#                   st_bbox(park_bound)$ymax - st_bbox(park_bound)$ymin)
 
 intersect(names(park_veg), names(veg_colors))
 
@@ -83,14 +103,10 @@ diff_totreg <- diff(range(reg2$totreg_m2))
 
 reg2 <- reg2 %>% mutate(totreg_std = (reg2$totreg_m2 - min_totreg) / (diff_totreg),
                         totreg_std2 = ifelse(totreg_std < 0.1, 0.1, totreg_std),
-                        pie_exp = totreg_std2 + 1.5*sqrt(totreg_std2)
+                        pie_exp = pie_min + (pie_max - pie_min)*(totreg_std2)
 )
 
-head(map_controls)
-
 # Create long list for ggplot pie chart list
-#reg2$Plot_Name[reg2$totreg_m2 > 0]
-
 plot_list <- sort(unique(reg2$Plot_Name))
 
 reg_long <- reg2 %>% select(Plot_Name, sd15_30:sap) %>% 
@@ -104,7 +120,6 @@ reg_long$size_class <- factor(reg_long$size_class,
                               levels = c("sd15_30", "sd30_100", "sd100_150", "sd150p", "sap"))
 
 reg_long <- reg_long %>% arrange(Plot_Name, size_class) 
-intersect(names(reg2), names(reg_long))
 reg_long2 <- left_join(reg_long, reg2, by = "Plot_Name") 
 
 #----- Set up pie charts -----
@@ -126,7 +141,7 @@ pie_fun <- function(df, plotname, y_var, grp_var, std_var){
 
   df2 <- df[df$Plot_Name == plotname,] %>% ungroup()
   pie_exp1 <- df2 %>% select(!!std_var) %>% unique() %>% as.numeric()
-  pie_exp <- pie_exp1 + 1.5*sqrt(pie_exp1)
+  pie_exp <- pie_min + (pie_max - pie_min)*pie_exp1 # expansion factors for pies range(0.7, 2.5)
   
   g <- ggplotGrob(
          ggplot(df2, aes(x = "", y = !!y_var, 
@@ -160,7 +175,7 @@ pie_list <- map(plot_list, ~pie_fun(reg_long2, .x, y_var = dens,
 #----- Check and fix pie overlap -----
 # Convert forest data to simple feature
 CRS <- if(park_code %in% c('ACAD', 'MIMA')){26919} else {26918}
-reg2 <- reg2 %>% mutate(plot_num = as.numeric(Plot_Number), fig_radius = pie_exp * 100)
+reg2 <- reg2 %>% mutate(plot_num = as.numeric(Plot_Number), fig_radius = pie_exp * pie_expfac)
 
 reg_sf <- st_as_sf(reg2, coords = c("X_Coord", "Y_Coord"), crs = CRS, agr = "constant")
 reg_sf_alb <- st_transform(reg_sf, crs = 5070)
@@ -172,7 +187,7 @@ reg_sf <- st_buffer(reg_sf, reg_sf$fig_radius)
 check_overlap(reg_sf)
 
 plot(reg_sf[2])
-nums <- 30
+nums <- 10
 test <- nudge_XY(reg_df, x = "X", y = "Y", stdvar = "totreg_std2", nums) #SAGA isn't working
 test_sf <- st_as_sf(test, coords = c("X_nudge", "Y_nudge"), crs = 5070) # Too extreme for MABI
 test_sf_buff <- st_buffer(test_sf, test_sf$fig_radius)
@@ -189,7 +204,6 @@ basemap <- tm_shape(park_veg) +
              tm_borders(col = 'black', lwd = 2)
 
 #pie_list
-
 map1 <- basemap + tm_shape(reg_sf_alb) +
   tm_symbols(#size = "totreg_std2", 
              shape = "Plot_Name",
@@ -226,14 +240,13 @@ map2 <- basemap + tm_shape(test_sf %>% arrange(-fig_radius)) +
             tm_borders(col = 'red')
 map2
 
-#tmap_arrange(map1, map2)
-# landscape
-#tmap_save(map1, width = 11, height = 8.5, units = 'in', dpi = 600, filename = paste0(park_code, "_regen.png"))
-#tmap_save(map2, width = 11, height = 8.5, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge30.png"))
+width <- ifelse(park_layout == "landscape", 11, 8.5)
+height <- ifelse(park_layout == 'portrait', 11, 8.5)
 
-#portrait
-tmap_save(map1, width = 8.5, height = 11, units = 'in', dpi = 600, filename = paste0(park_code, "_regen.png"))
-tmap_save(map2, width = 8.5, height = 11, units = "in", dpi = 600, filename = paste0(park_code, "_regen_nudge2.png"))
+tmap_save(map1, width = width, height = height, units = 'in', dpi = 600, 
+          filename = paste0("./figures/", park_code, "_regen.png"))
+tmap_save(map2, width = width, height = height, units = "in", dpi = 600, 
+          filename = paste0("./figures/", park_code, "_regen_nudge.png"))
 
 
 # 
