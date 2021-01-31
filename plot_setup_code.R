@@ -104,6 +104,8 @@ pie_fun <- function(df, plotname, y_var, grp_var, std_var){
   }
 
 #----- Create veg map legend -----
+windowsFonts(A = windowsFont("Arial"))
+
 veg_leg <- tm_shape(park_veg)+
   tm_fill(col = "fills")+
   tm_add_legend(title = "Habitat types", type = 'fill', 
@@ -114,7 +116,6 @@ veg_leg <- tm_shape(park_veg)+
                 size = 0.5)+
   tm_layout(legend.only = TRUE, 
             legend.text.size = 1,
-            legend.title.size = 1.2)
-
-
+            legend.title.size = 1.2, 
+            fontfamily = "A")
 

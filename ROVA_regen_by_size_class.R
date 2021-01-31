@@ -5,6 +5,9 @@
 library(tmap)
 library(tmaptools)
 library(gtable)
+
+windowsFonts(A = windowsFont("Arial"))
+
 park_code = "ROVA"
 pie_min = 0.3 #0.5 will be 0.7, actually, which is better
 pie_max = 1.5#1.5 in parks where pies are packed (eg ACAD)
@@ -15,6 +18,7 @@ source("./regen_by_size_class.R")
 nums <- 30
 nudge_df <- nudge_XY(reg_df, x = "X", y = "Y", stdvar = "totreg_std2", nums) #
 nudge_sf <- st_as_sf(nudge_df, coords = c("X_nudge", "Y_nudge"), crs = 5070) # 
+write_sf(nudge_sf, "./shapefiles/ROVA_regensize_pie_nudge.shp")
 
 rova_list <- sort(unique(reg2$Plot_Name[reg2$Unit != "VAMA"]))
 vama_list <- sort(unique(reg2$Plot_Name[reg2$Unit == "VAMA"]))
@@ -36,13 +40,13 @@ rova_reg <- rova +
              shapes = rova_pies, border.col = NA, border.lwd = NA)+
   tm_layout(inner.margins = 0, #outer.margins = 0.01,
             outer.margins = c(0.02, 0.00832, 0.008, 0.01),
-            bg.color = "#d4d4d4")+
+            bg.color = "#d4d4d4",
+            fontfamily = "A")+
   tm_compass(size = 2, position = c(0.95,0.03), just = 0.5) + 
   tm_scale_bar(breaks = c(0,0.25,0.5,0.75,1),  just = 0.5, 
                position = c(0.5,0.03))+
   #tm_text("Plot_Number", size = 0.8)+
   tm_legend(show = FALSE)
-
 
 vama_reg <- vama +  
   tm_shape(vama_sf)+
@@ -50,15 +54,19 @@ vama_reg <- vama +
              shapes = vama_pies, border.col = NA, border.lwd = NA)+
   tm_layout(inner.margins = 0, #outer.margins = 0.01,
             outer.margins = c(0, 0.04, 0.01, 0.01),
-            bg.color = "#d4d4d4")+
+            bg.color = "#d4d4d4",
+            fontfamily = "A")+
   # tm_scale_bar(breaks = c(0,0.25,0.5,0.75,1),  just = 0.5, 
   #              position = c(0.5,0.03))+
   #tm_text("Plot_Number", size = 0.8)+
   tm_legend(show = FALSE)
 
+scales_tbl
+
 #veg_leg is the vegmap legend coming from plot_setup_code
 #pie_leg is the piechart legend coming from regen_by_size_class
 pie_leg <- gtable_filter(ggplot_gtable(ggplot_build(pie_for_leg)), "guide-box")
+pie_leg
 
 map_vp <-
   viewport(layout = grid.layout(nrow = 2, ncol = 2,
@@ -84,9 +92,7 @@ pushViewport(viewport(#layout.pos.row = 1, layout.pos.col = 2,
                       x = 0.7, y = 0.85))
 grid.draw(pie_leg)
 
-?viewport
-
-rova_grid("ROVA_template", rova_reg, vama_reg)
+rova_grid("ROVA_template_Arial", rova_reg, vama_reg)
 
 rova_grid <- function(name, rova_obj, vama_obj){
 map_vp <-
