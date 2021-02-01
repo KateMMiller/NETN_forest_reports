@@ -23,11 +23,11 @@ write_sf(nudge_sf, "./shapefiles/ROVA_regensize_pie_nudge.shp")
 rova_list <- sort(unique(reg2$Plot_Name[reg2$Unit != "VAMA"]))
 vama_list <- sort(unique(reg2$Plot_Name[reg2$Unit == "VAMA"]))
 
-vama_pies <- map(vama_list, ~pie_fun(reg_long2 %>% filter(Unit == "VAMA"), .x, y_var = dens, 
+vama_pies <- map(vama_list, ~pie_regsize_fun(reg_long2 %>% filter(Unit == "VAMA"), .x, y_var = dens, 
                                      grp_var = size_class, std_var = "totreg_std2")) %>% 
                  set_names(vama_list)
 
-rova_pies <- map(rova_list, ~pie_fun(reg_long2 %>% filter(Unit !="VAMA"), .x, y_var = dens, 
+rova_pies <- map(rova_list, ~pie_regsize_fun(reg_long2 %>% filter(Unit !="VAMA"), .x, y_var = dens, 
                                      grp_var = size_class, std_var = "totreg_std2")) %>% 
              set_names(rova_list)
 
