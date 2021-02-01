@@ -30,6 +30,7 @@ units <- read.csv("./shapefiles/tbl_Alternative_Plot_Labels.csv")
 #-----
 # Columns that specify map controls
 map_controls <- read.csv("./shapefiles/map_controls.csv")
+
 map_controls$values <- factor(map_controls$values,
                               levels = c("sd15_30", "sd30_100", "sd100_150", "sd150p", "sap", "nonereg",
                                          "cycle1", "cycle2", "cycle3", "cycle4", "noneregcyc", 
@@ -71,8 +72,21 @@ prep_sym_cols <- function(df, grp_var){
 
 regsize_cols <- prep_sym_cols(map_controls, "regsize")
 
+# Function to create symbol list
+prep_sym_shapes <- function(df, grp_var){
+  map_shapes_df <- df[df$group == grp_var, c('values','shapes')]
+  map_shapes1 <- t(map_shapes_df)
+  colnames(map_shapes1) <- map_shapes1[1, ]
+  map_shapes <- map_shapes1[-1, ]
+  return(map_shapes)
+}
+
+regsize_symb <- prep_sym_shapes(map_controls, "regsize") 
+
+regsize_cols
+
 # Function to create ggplot pie charts
-pie_fun <- function(df, plotname, y_var, grp_var, std_var){
+pie_regsize_fun <- function(df, plotname, y_var, grp_var, std_var){
   grp_var <- enquo(grp_var)
   y_var <- enquo(y_var)
 
@@ -83,7 +97,8 @@ pie_fun <- function(df, plotname, y_var, grp_var, std_var){
   g <- ggplotGrob(
          ggplot(df2, aes(x = "", y = !!y_var, 
                 group = !!grp_var, fill = !!grp_var))+
-         geom_bar(stat = 'identity', width = 1, color = '#696969')+
+         {if(all(df2[, std_var] == 0)) geom_point(shape = 24, fill = "#ff7f00", size = 3)}+
+         {if(any(df2[, std_var] > 0)) geom_bar(stat = 'identity', width = 1, color = '#696969')}+
          scale_fill_manual(values = regsize_cols)+
          coord_polar(theta = "y", start = 0)+
          theme_void()+
