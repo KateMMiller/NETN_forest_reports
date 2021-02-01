@@ -7,6 +7,7 @@ importData()
 #----- Prep forest data -----
 reg <- joinRegenData(park = park_code, speciesType = "native", canopyForm = 'all', 
                      from = 2016, to = 2019)
+units <- read.csv("./shapefiles/tbl_Alternative_Plot_Labels.csv")
 reg1 <- left_join(reg, units[,c("Plot_Name", "Unit")], by = "Plot_Name")
 
 reg2 <- reg1 %>% group_by(Unit_Code, Plot_Name, Unit, Plot_Number, X_Coord, Y_Coord) %>% 
@@ -22,7 +23,7 @@ min_totreg <- min(reg2$totreg_m2)
 diff_totreg <- diff(range(reg2$totreg_m2))
 
 reg2 <- reg2 %>% mutate(totreg_std = (reg2$totreg_m2 - min_totreg) / (diff_totreg),
-                        totreg_std2 = ifelse(totreg_std < 0.1, 0.1, totreg_std),
+                        totreg_std2 = ifelse(totreg_std > 0 & totreg_std < 0.1, 0.1, totreg_std),
                         pie_exp = pie_min + (pie_max - pie_min)*(totreg_std2)
 )
 
@@ -70,7 +71,7 @@ check_overlap(reg_sf)
 
 #----- Create pie legend -----
 
-pie_for_leg <- ggplot(reg_long2 %>% filter(Plot_Name == "ROVA-001"),
+pie_for_leg <- ggplot(reg_long2 %>% filter(Plot_Number == "001"),
                       aes(x = "", y = totreg_std2, fill = size_class))+
   geom_bar(stat = 'identity', width = 1, color = '#696969')+
   scale_fill_manual(values = regsize_cols, name = "Stem densities by size class",
@@ -82,4 +83,4 @@ pie_for_leg <- ggplot(reg_long2 %>% filter(Plot_Name == "ROVA-001"),
         legend.key.height = unit(15, 'pt'),
         legend.key.width = unit(15,'pt'))
 
-
+head(reg_sf)
