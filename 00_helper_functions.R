@@ -133,11 +133,10 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
 # Function to eventually add to forestNETN/MIDN
 # Internal function used within nudge_XY
 #----------------------
-#
-# x and y are quoted coordinates, df is the dataframe to turn into simple feature
-# Using CRS 5070 (UTM albers). Returns a data.frame with nudged coordinates
+# Calls and returns a data.frame with nudged coordinates
+# Args x and y are quoted coordinates, df is the dataframe to turn into simple feature
+# Using CRS 5070 (UTM albers). 
 #   - consider adding crs as an argument, but keep it in UTM
-#   - consider inputting sf and outputting sf instead of df to sf to df, or make it an argument
 #   - add quietly = T/F so you can turn the chatter on/off in console
 #
 

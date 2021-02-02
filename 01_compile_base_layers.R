@@ -1,31 +1,25 @@
 #-----------------------
 # Source file to load all base layers, import data, and prepare for plotting
 #-----------------------
-library(tmap)
 library(sf)
-library(tidyverse)
-library(forestNETN)
-library(egg) # for set_panel_size; expose ggplot layout
 
 options(scipen = 100, digits = 6)
-
-source("./nudge_XY.R")
-
-#importData()
-#----- Next Steps -----
-# 1. Set up markdown park templates, so MIMA and ROVA can be 2 layouts and ACAD can be 3
-# 2. Add none symbol to pie_list for 0s
-# 3. Figure out scale, so pies are scaled properly for small and big parks
-# 4. Set up GIS layers for MIDN parks
-# 5. Add std. var step in functions, rather than calculating outside
 
 #----- Load spatial data -----
 bounds <- st_read("./shapefiles/NETN_park_bounds_units_albers.shp")
 plots <- st_read("./shapefiles/NETN_forest_plots_albers.shp")
 #st_crs(plots) #5070
 vegmap <- st_read("./shapefiles/NETN_vegmap_albers.shp")
+sort(unique(vegmap$veg_type ))
+vegmap$veg_type <- factor(vegmap$veg_type,
+                          levels = c("Conifer forest", "Conifer plantation", "Mixed forest", "Hardwood forest", "Mature hardwood forest",
+                                     "Successional hardwood forest", "Spruce-fir forest", "Upland forest", "Exotic hardwood forest",
+                                     "Forest gap", "Conifer woodland", "Mixed woodland", "Shrubland", "Forested wetland", 
+                                     "Shrub wetland", "Open wetland", "Saltmarsh", "Headland", "Intertidal", "Beach", "Subalpine", 
+                                     "Open field", "Open water", "Developed", "No data"))
+
 veg_colors <- read.csv("./shapefiles/Vegmap_colors.csv")
-units <- read.csv("./shapefiles/tbl_Alternative_Plot_Labels.csv")
+units <- read.csv("tbl_Alternative_Plot_Labels.csv")
 
 #-----
 # Columns that specify map controls
@@ -51,7 +45,7 @@ park_plots <- plots[plots$Unit_Cd == park_code, ]
 
 #----- Set up park controls -----
 park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
-} else {"+init=epsg:26918"}
+  } else {"+init=epsg:26918"}
 
 park_layout <- ifelse(park_code %in% c("ACAD", "MABI", "MIMA", "ROVA"), "landscape", "portrait")
 
@@ -60,7 +54,16 @@ pie_expfac1 <- data.frame(park_code = c("ACAD", "MABI", "MIMA", "MORR", "ROVA", 
 
 pie_expfac <- pie_expfac1$pie_expfac[pie_expfac1$park_code == park_code] 
 
+#----- Create veg map legend for given park -----
+park_veg2 <- park_veg %>% arrange(veg_type) #arrange by factor level set for map_controls
 
+numcols <- ifelse(park_layout == "landscape", 2, 1) # Habitat type legend is 2 cols if landscape map
 
+veg_leg  <- ggplot(data = park_veg2)+
+  geom_sf(aes(fill = veg_type))+
+  scale_fill_manual(values = park_veg2$fills,
+                    name = "Habitat type")+
+  theme(legend.text = element_text(size = 11))+
+  guides(fill = guide_legend(ncol = numcols)) #make legend 2 columns
 
 
