@@ -1,6 +1,7 @@
 library(tidyverse)
 library(sf) 
 library(forestNETN)
+
 #-------------------------------
 # Regen by size class 
 #-------------------------------
@@ -27,8 +28,8 @@ min_totreg <- min(reg2$totreg_m2)
 diff_totreg <- diff(range(reg2$totreg_m2))
 
 reg2 <- reg2 %>% mutate(totreg_std = (reg2$totreg_m2 - min_totreg) / (diff_totreg),
-                         totreg_std2 = ifelse(totreg_std > 0 & totreg_std < 0.1, 0.1, totreg_std),
-                         pie_exp = pie_min + (pie_max - pie_min)*(totreg_std2)
+                        totreg_std2 = ifelse(totreg_std > 0 & totreg_std < 0.1, 0.1, totreg_std),
+                        pie_exp = pie_min + (pie_max - pie_min)*(totreg_std2)
 )
 
 # Create long list for ggplot pie chart list

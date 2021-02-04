@@ -1,22 +1,17 @@
+#-------------------------------
+# Pie size controls 
+#-------------------------------
+pie_expfac1 <- data.frame(park_code = c("ACAD", "MABI", "MIMA", "MORR", "ROVA", "SAGA", "SARA", "WEFA"),
+                          pie_expfac = c(700, 50, 80, 80, 80, 25, 90, 22)) #~trial and error based on park's ideal map scale  
+
+pie_expfac <- pie_expfac1$pie_expfac[pie_expfac1$park_code == park_code] 
+
 #--------------------
-# Set up park and metric specific templates
+# Park and metric specific templates
 #--------------------
 
-#----- Create veg map legend -----
-# veg_leg <- tm_shape(park_veg)+
-#   tm_fill(col = "fills")+
-#   tm_add_legend(title = "Habitat types", type = 'fill', 
-#                 labels = park_veg$labels,
-#                 col = park_veg$fills,
-#                 border.col = "white",
-#                 border.lwd = 3,
-#                 size = 0.5)+
-#   tm_layout(legend.only = TRUE, 
-#             legend.text.size = 1,
-#             legend.title.size = 1.2, 
-#             fontfamily = "A")
-
-#----- Create pie legend -----
+#----- regsize pie legend -----
+# fake dataset for leg
 regsize_cols <- prep_sym_cols(df = map_controls, grp_var = "regsize")
 regsize_symb <- prep_sym_shapes(df = map_controls, grp_var = "regsize") 
 
@@ -26,7 +21,7 @@ regsize_gen_df <- data.frame(totreg_std2 = c(rep(0.2, 5),0),
                              labs = c("Seedlings 15 \U2013 30cm", "Seedlings 30 \U2013 100cm",
                                         "Seedlings 100 \U2013 150cm", "Seedlings > 150cm",
                                         "Saplings (1 \U2013 9.9cm DBH)", "None present"))
-
+# fake plot for leg
 regsize_leg <- ggplot(regsize_gen_df,
                       aes(x = size_class, y = totreg_std2, 
                           fill = size_class, size = size_class,
@@ -42,8 +37,9 @@ regsize_leg <- ggplot(regsize_gen_df,
   scale_size_manual(name = "Stem densities by size class",
                     labels = regsize_gen_df$labs,
                     values = c(8, 8, 8, 8, 8, 3))+
-  
+  theme_void()+
   theme(legend.text = element_text(size = 11),
+        legend.title = element_text(size = 12, face = "bold"),
         plot.background = element_blank(),
         panel.background = element_blank(),
         panel.border = element_blank(),

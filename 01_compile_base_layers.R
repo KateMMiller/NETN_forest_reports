@@ -49,21 +49,33 @@ park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
 
 park_layout <- ifelse(park_code %in% c("ACAD", "MABI", "MIMA", "ROVA"), "landscape", "portrait")
 
-pie_expfac1 <- data.frame(park_code = c("ACAD", "MABI", "MIMA", "MORR", "ROVA", "SAGA", "SARA", "WEFA"),
-                          pie_expfac = c(700, 50, 80, 80, 80, 25, 90, 22)) #~trial and error based on park's ideal map scale  
-
-pie_expfac <- pie_expfac1$pie_expfac[pie_expfac1$park_code == park_code] 
 
 #----- Create veg map legend for given park -----
-park_veg2 <- park_veg %>% arrange(veg_type) #arrange by factor level set for map_controls
+#arrange by factor level set for map_controls
+park_veg2 <- park_veg %>% arrange(veg_type) %>% st_drop_geometry(.) %>% 
+                          rownames_to_column(., var = "x")
+ 
+head(park_veg2)
 
 numcols <- ifelse(park_layout == "landscape", 2, 1) # Habitat type legend is 2 cols if landscape map
 
-veg_leg  <- ggplot(data = park_veg2)+
-  geom_sf(aes(fill = veg_type))+
+veg_leg  <- ggplot(data = park_veg2, 
+                   aes(x = x, y = x, fill = veg_type))+
+  geom_point(alpha = 0.8, shape = 22, size = 7.5)+
   scale_fill_manual(values = park_veg2$fills,
                     name = "Habitat type")+
-  theme(legend.text = element_text(size = 11))+
+  theme_void()+
+  theme(legend.text = element_text(size = 11, margin=margin(r = 20)),
+        legend.title = element_text(size = 12, face = "bold"),
+        legend.position = 'right',
+        plot.background = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid = element_blank())+
   guides(fill = guide_legend(ncol = numcols)) #make legend 2 columns
 
+veg_leg
 
