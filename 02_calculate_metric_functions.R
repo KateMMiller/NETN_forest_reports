@@ -6,7 +6,7 @@ library(forestNETN)
 # Regen by size class 
 #-------------------------------
 # Prep data
-regen_by_sizeclass <- function(park_code, year_start, year_end){
+regen_by_sizeclass <- function(park_code, year_start, year_end, pie_int, pie_slope){
   reg <- joinRegenData(park = park_code, speciesType = "native", canopyForm = 'canopy', 
                        from = year_start, to = year_end)
   
@@ -29,8 +29,8 @@ diff_totreg <- diff(range(reg2$totreg_m2))
 
 reg2 <- reg2 %>% mutate(totreg_std = (reg2$totreg_m2 - min_totreg) / (diff_totreg),
                         totreg_std2 = ifelse(totreg_std > 0 & totreg_std < 0.1, 0.1, totreg_std),
-                        pie_exp = pie_min + (pie_max - pie_min)*(totreg_std2)
-)
+                        fig_radius = pie_int + pie_slope*(totreg_std2))
+
 
 # Create long list for ggplot pie chart list
 plot_list <- sort(unique(reg2$Plot_Name))
@@ -50,8 +50,8 @@ reg_long2 <- left_join(reg_long, reg2, by = "Plot_Name")
 
 # Convert output data to simple feature and transform to UTM Albers (5070)
 CRS <- if(park_code %in% c('ACAD', 'MIMA')){26919} else {26918} #coords from database
-reg2 <- reg2 %>% mutate(plot_num = as.numeric(Plot_Number), #use for plot labels later
-                        fig_radius = pie_exp * pie_expfac) #approximates size of pie
+reg2 <- reg2 %>% mutate(plot_num = as.numeric(Plot_Number)) #use for plot labels later
+                       
 reg_sf <- st_as_sf(reg2, coords = c("X_Coord", "Y_Coord"), crs = CRS, agr = "constant") 
 reg_sf_alb <- st_transform(reg_sf, crs = 5070) #convert to UTM Albers
 
