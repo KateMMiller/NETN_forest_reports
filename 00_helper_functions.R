@@ -46,7 +46,7 @@ check_overlap <- function(sf){
 # Using CRS 5070 (UTM albers). Returns a data.frame with nudged coordinates
 #   - consider adding crs as an argument, but keep it in UTM
 #
-nudge_XY_sing <- function(df, x, y, runs, stdvar){
+nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
   if(!exists('runs')){runs = 1}
   
   df$X1 <- df[,x]
@@ -62,7 +62,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   # Calculate the distance between the closest points. Take only the closest point
   # st_distance returns an array. Have to do a lot of munging to get the wanted format
   
-  slice_num <- ifelse(runs > 20, sample(c(1, 2), 1), 1)
+  slice_num <- ifelse(runs > 20, sample(c(1, 2), 1, replace = TRUE), 1)
   
   df_dist <- st_distance(sf) %>% data.frame() %>% set_names(plot_list) %>% #distance b/t points
     mutate(Plot_Name = plot_list) %>% 
@@ -112,10 +112,10 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
   
   inc_dist <- if(runs > 20){0.8
   } else if(runs < 20 && runs > 10){0.6
-  } else{0.5} # increase shift distance for longer runs of pies get stuck
+  } else{min_shift} # increase shift distance for longer runs of pies get stuck
   
   df_geom_rad <- df_geom_rad %>% mutate(shift = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-                                                       inc_dist*((fig_radius + fig_radius2) - dist), 0), #slightly more than half dist
+                                                       inc_dist*((fig_radius + fig_radius2) - dist), 0), 
                                         X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          X1 + dir_x*sin((ran_angle+angle)*(pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
@@ -140,7 +140,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar){
 #   - add quietly = T/F so you can turn the chatter on/off in console
 #
 
-nudge_XY <- function(df, x, y, stdvar, max_iter = 10){
+nudge_XY <- function(df, x, y, stdvar, min_shift = 0.5, max_iter = 10){
   # source("nudge_XY_sing.R")
   # source("check_overlap.R")
   runs <- 0
@@ -150,7 +150,7 @@ nudge_XY <- function(df, x, y, stdvar, max_iter = 10){
   plot_list <- sort(unique(df$Plot_Name))
   
   while(num_overlap > 0 && runs < max_iter){
-    sf_nudge <- nudge_XY_sing(df, x, y, runs = runs, stdvar)
+    sf_nudge <- nudge_XY_sing(df, x, y, runs = runs, stdvar, min_shift)
     
     num_overlap <- nrow(check_overlap(sf_nudge))
     overlaps <- c(check_overlap(sf_nudge))

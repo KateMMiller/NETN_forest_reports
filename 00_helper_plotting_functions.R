@@ -30,8 +30,8 @@ pie_regsize_fun <- function(df, plotname, y_var, grp_var, std_var){
   y_var <- enquo(y_var)
   
   df2 <- df[df$Plot_Name == plotname,] %>% ungroup()
-  pie_exp1 <- df2 %>% select(!!std_var) %>% unique() %>% as.numeric()
-  pie_exp <- pie_min + (pie_max - pie_min)*pie_exp1 # expansion factors for pies range(0.7, 2.5)
+  # pie_exp1 <- df2 %>% select(!!std_var) %>% unique() %>% as.numeric()
+  # pie_r <- pie_min + (pie_max - pie_min)*pie_exp1 # expansion factors for pies range(0.7, 2.5)
   
   g <- ggplotGrob(
     suppressMessages(ggplot(df2, aes(x = "", y = !!y_var))+
@@ -61,8 +61,10 @@ pie_regsize_fun <- function(df, plotname, y_var, grp_var, std_var){
       )
   )
   ) #end of suppressWarnings
-  p <- set_panel_size(p = NULL, g = g, 
-                      margin = unit(0, "mm"), 
-                      width = unit(pie_exp, "cm"), 
-                      height = unit(pie_exp, "cm"))
+  
+  g
+  # p <- set_panel_size(p = NULL, g = g, 
+  #                     margin = unit(0, "mm"), 
+  #                     width = unit(pie_min, "cm"), 
+  #                     height = unit(pie_min, "cm"))
 }
