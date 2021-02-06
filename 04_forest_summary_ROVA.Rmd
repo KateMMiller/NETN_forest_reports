@@ -1,0 +1,169 @@
+---
+title: "forest summary"
+author: "Kate Miller"
+date: "2/2/2021"
+output: html_document
+params: 
+  park_code: ROVA
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r depends, echo = FALSE, results = 'hide', message = FALSE}
+windowsFonts(A = windowsFont("Arial"))
+
+park_code <- params$park_code
+
+library(tidyverse)
+library(forestNETN)
+library(egg) #for pie_regsize_fun
+library(grid) # for parks with multiple units
+library(gtable) # for extracting the legend from ggplot objects
+
+importData()
+
+#pie_min = 0.5 # Minimum diameter of pie. Used in 00_helper_plotting_functions
+pie_int = 40 # ~Size of smallest pie in m. Used in 02_calculate_metric_functions to calc. fig_radius
+pie_slope = 200 # Expansion factor to increase pie size by (pie_int + pie_slope(std_var)). 
+  # Used in 02_calculate_metric_functions to calc. fig_radius
+#pie_max = 2#1.5 in parks where pies are packed (eg ACAD)
+
+# Note: 00 scripts will eventually be added to a package
+source("00_helper_functions.R") # nudge_XY and dependency functions
+source("00_helper_plotting_functions.R") # pie, chart and corresponding legend functions
+source("01_compile_base_layers.R") # load spatial data and set up metric-level templates/legends
+source("02_calculate_metric_functions.R") # metric summary functions
+source(paste0("03_park_template_", park_code, ".R")) # Creates park-specific base maps and scales_tbl
+```
+
+```{r, regsize_nudge}
+# Calc. regen by size class per plot
+regen_by_sizeclass(park_code, 2016, 2019, pie_int, pie_slope) # adds regsize_df & regsize_long to GE
+# Nudge XY coords if pies will overlap
+regsize_nudge <- nudge_XY(regsize_df, x = "X", y = "Y", stdvar = "totreg_std2", max_iter = 30, min_shift = 0.4)
+names(regsize_nudge)
+
+regsize_nudge <- regsize_nudge %>% mutate(rand_signX = sample(c(-1,1), n(), replace = TRUE),
+                                          rand_signY = sample(c(-1,0,1), n(), replace = TRUE),
+                                          X_text = ifelse(std_var == 0, X_nudge + 5, 
+                                                                        X_nudge + rand_signX*fig_radius),
+                                          Y_text = ifelse(std_var > 0 & Y_nudge != Y_orig, 
+                                                          Y_nudge + rand_signY*fig_radius, 
+                                                          Y_nudge - fig_radius),
+                                          fig_area = (fig_radius^2)*pi)
+```
+
+```{r, regsize_pies}
+# Create list of pies
+vama_list <- sort(unique(regsize_nudge$Plot_Name[regsize_nudge$Unit == "VAMA"]))
+rova_list <- sort(unique(regsize_nudge$Plot_Name[regsize_nudge$Unit != "VAMA"]))
+
+vama_regsize_pies <- map(vama_list, 
+                         ~pie_regsize_fun(regsize_long %>% filter(Unit == "VAMA"), .x,
+                                          y_var = dens, grp_var = size_class, std_var = "totreg_std2"))
+rova_regsize_pies <- map(rova_list, 
+                         ~pie_regsize_fun(regsize_long %>% filter(Unit != "VAMA"), .x,
+                                          y_var = dens, grp_var = size_class, std_var = "totreg_std2"))
+
+```
+
+```{r, regsize_map}
+rova_sf <- st_as_sf(regsize_nudge %>% filter(Unit != "VAMA"), coords = c("X_nudge", "Y_nudge"), crs = 5070) 
+vama_sf <- st_as_sf(regsize_nudge %>% filter(Unit == "VAMA"), coords = c("X_nudge", "Y_nudge"), crs = 5070)
+rova_text <- st_as_sf(regsize_nudge %>% filter(Unit != "VAMA"), coords = c("X_text", "Y_text"), crs = 5070)
+vama_text <- st_as_sf(regsize_nudge %>% filter(Unit == "VAMA"), coords = c("X_text", "Y_text"), crs = 5070)
+#rova_buff <- st_buffer(rova_sf, dist = rova_sf$fig_radius)
+#vama_buff <- st_buffer(vama_sf, dist = vama_sf$fig_radius)
+
+rova_reg <- rova +  
+  tm_shape(rova_sf %>% arrange(-fig_radius))+
+  tm_symbols(size = "fig_area",
+             scale = 2.5,
+             size.max = max(regsize_nudge$fig_area),
+             #size.lim = c(50,480), #diam
+             perceptual = TRUE,
+             shape = "Plot_Name", 
+             group = "Charts", # pie charts
+             shapes = rova_regsize_pies,
+             border.col = NA, 
+             border.lwd = NA)+
+  {if(nrow(rova_sf %>% filter(totreg_std2 == 0))>0) # add symbols if no regen
+    tm_shape(rova_sf %>% filter(totreg_std2 == 0))+
+    tm_dots(shape = 24, border.col = "white", border.lwd = 1.8, size = 0.4)+
+    tm_shape(rova_sf %>% filter(totreg_std2 == 0))+
+    tm_dots(shape = 24, col = "#ff7f00", size = 0.3)}+
+  tm_shape(rova_text)+ # add plot labels
+  tm_text("plot_num", size = 0.6, xmod = 0.01, ymod = -0.01,
+          col = "black", bg.alpha = 0.8,
+          just = 'center', shadow = "TRUE",
+          fontface = 'bold')#+
+  # tm_shape(rova_buff)+
+  # tm_borders(col = 'red')
+
+vama_reg <- vama +  
+  tm_shape(vama_sf %>% arrange(-fig_radius))+
+  tm_symbols(size = "fig_area",
+             scale = 2.5,
+             size.max = max(regsize_nudge$fig_area),
+             perceptual = TRUE,
+             shape = "Plot_Name", 
+             group = "Charts", # pie charts
+             shapes = vama_regsize_pies,
+             border.col = NA, 
+             border.lwd = NA)+
+  {if(nrow(vama_sf %>% filter(totreg_std2 == 0))>0)
+    tm_shape(vama_sf %>% filter(totreg_std2 == 0))+ # add symbols if no regen
+    tm_dots(shape = 24, border.col = "white", border.lwd = 1.8, size = 0.4)+
+    tm_shape(vama_sf %>% filter(totreg_std2 == 0))+
+    tm_dots(shape = 24, col = "#ff7f00", size = 0.3)}+
+  tm_shape(vama_text)+
+  tm_text("plot_num", size = 0.6, 
+          col = "black", bg.alpha = 0.8,
+          just = 'center', shadow = "TRUE",
+          fontface = 'bold')#+
+  # tm_shape(vama_buff)+
+  # tm_borders(col = 'red')
+
+# regsize_leg #ggplot with the pie legend
+regsize_gleg <- gtable_filter(ggplot_gtable(ggplot_build(regsize_leg)), "guide-box")
+
+
+# veg_leg #ggplot with habitat type legend (from script 03)
+veg_gleg <- gtable_filter(ggplot_gtable(ggplot_build(veg_leg)), "guide-box")
+
+# Start viewport
+map_vp <-
+  viewport(xscale = c(0,1), yscale = c(0,1),
+           layout = grid.layout(nrow = 2, ncol = 2,
+                                heights = unit(c(scales_tbl$yrange[scales_tbl$unit == "VAMA"],
+                                                 scales_tbl$yrange[scales_tbl$unit == "ROVA"]),
+                                               c("null", "null")),
+                                widths = unit(c(scales_tbl$xrange[scales_tbl$unit == "VAMA"],
+                                                scales_tbl$xrange[scales_tbl$unit == "ROVA"]),
+                                              c("null", "null"))
+  ), name = "map_vp")
+
+jpeg("ROVA_new_2n.jpg", height = 8.5, width = 9.9, units = "in", res = 600)
+grid.newpage()
+pushViewport(map_vp)
+grid.rect(gp = gpar(col = 'black', fill = "white"))
+print(rova_reg, viewport(layout.pos.row = 2, layout.pos.col = NULL, just = "center"))
+print(vama_reg, viewport(layout.pos.row = 1, layout.pos.col = 1, just = "center"))
+#upViewport() #goes back to map_vp
+pushViewport(map_vp)
+pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 2,
+                      x = -0.14, y = 1.16, #clip = "on",#width = unit(0.001, "npc"), 
+                      just = c("left", "top")))
+grid.draw(regsize_gleg)
+upViewport()
+pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 2,
+                      x = 0.24, y = 1.16, #clip = "on",#width = unit(0.001, "npc"), 
+                      just = c("left", "top")))
+grid.draw(veg_gleg)
+dev.off()
+
+```
+
+
