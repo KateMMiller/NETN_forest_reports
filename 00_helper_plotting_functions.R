@@ -1,9 +1,7 @@
 #-----------------------
 # Functions to help with plotting
 #-----------------------
-
 library(tidyverse)
-library(egg)
 
 #----- Set up pie charts -----
 # Function to create formatted color list for plotting/legend
@@ -63,8 +61,4 @@ pie_regsize_fun <- function(df, plotname, y_var, grp_var, std_var){
   ) #end of suppressWarnings
   
   g
-  # p <- set_panel_size(p = NULL, g = g, 
-  #                     margin = unit(0, "mm"), 
-  #                     width = unit(pie_min, "cm"), 
-  #                     height = unit(pie_min, "cm"))
 }
