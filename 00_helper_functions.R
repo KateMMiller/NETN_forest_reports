@@ -5,9 +5,11 @@
 #----------------------
 # ID plots that have at least one overlapping pie. Used within nudge_XY
 check_overlap <- function(sf){
+  
   # Create buffer approximately the size of pies. 
   sf_buff <- st_buffer(sf, sf$fig_radius)
   plot_list <- sort(unique(sf$Plot_Name))
+  
   # Determine pies that overlap
   overlaps1 <- st_drop_geometry(st_intersection(sf_buff)) %>% group_by(Plot_Name) %>%
     summarize(num_overlaps = sum(!is.na(Plot_Name))-1,
@@ -36,6 +38,101 @@ check_overlap <- function(sf){
   
   return(plots_to_shift)
 }
+
+#----------------------
+# Function to eventually add to forestNETN/MIDN
+# Internal helper function used within nudge_XY 
+#----------------------
+check_overlap_text <- function(df, plotname){
+  min_fig_rad <- min(df$fig_radius, na.rm = T) + 
+    0.1*(min(df$fig_radius, na.rm = T))
+  
+  # Set up pies/labels to check against
+  df_pies <- df %>% mutate(type = "pie", X = X_nudge, Y = Y_nudge)
+  df_text <- df %>% mutate(type = 'text', X = X_text, Y = Y_text,
+                           fig_radius = min(fig_radius) + 0.1*(min(fig_radius))) #added 10% buffer to size 
+  df_text_rest <- df_text %>% filter(!Plot_Name %in% plotname)
+  df_pies_rest <- df_pies %>% filter(!Plot_Name %in% plotname)
+  
+  colnames <- c("Plot_Name", "X", "Y", "fig_radius")
+  sf_comb <- st_as_sf(rbind(df_pies_rest[,colnames], df_text_rest[,colnames]),
+                      coords = c('X', 'Y'), crs = 5070)
+  sf_buff <- st_buffer(sf_comb, dist = sf_comb$fig_radius) %>% st_union()
+  
+  # Set up label for plotname being checked
+  df_pies_plot <- df_pies %>% filter(Plot_Name %in% plotname)
+  df_text_plot <- df_text %>% filter(Plot_Name %in% plotname)
+  sf_plot <- st_as_sf(df_text_plot, coords = c("X", "Y"), crs = 5070)
+  sf_plot_buff <- st_buffer(sf_plot, dist = sf_plot$fig_radius)
+  
+  check_over <- st_intersects(sf_buff, sf_plot_buff, sparse = F, 
+                              dist = min_fig_rad^2) # adds buffer
+}
+
+
+nudge_text <- function(df, plotname, quiet = TRUE){
+  
+  #df2 <- df[df$Plot_Name == plotname,]
+  orig_df <- df %>% rename(X_text_orig = X_text, 
+                           Y_text_orig = Y_text) 
+  
+  #set while loop parameters
+  text_over <- TRUE 
+  label_placement <- 1
+  loc = "BR"
+  
+  # Placement properties
+  place_props <- data.frame(order = 1:9,
+                            x = c(1, -1, -1, 1, 0, -1, 0, 1, 1), 
+                            y = c(-1, -1, 1, 1, -1, 0, 1, 0, -1),
+                            loc = c("BR", "BL", "UL", "UR", "BC", "ML", "UC", "MR", "BR")) #8th puts back to beginning
+  
+  while(text_over == TRUE & label_placement < 9){
+    
+    df_text_nudge <- df
+    
+    # iterate through placement properties
+    new_place <- place_props[label_placement, ] # skips first BR
+    x_sign = new_place$x
+    y_sign = new_place$y
+    loc = new_place$loc
+    df_text_nudge$X_text[df_text_nudge$Plot_Name == plotname] <- 
+      df_text_nudge$X_nudge[df_text_nudge$Plot_Name == plotname] + 
+      (df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * x_sign)
+    
+    df_text_nudge$Y_text[df_text_nudge$Plot_Name == plotname] <- 
+      df_text_nudge$Y_nudge[df_text_nudge$Plot_Name == plotname] + 
+      (df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * y_sign)
+    
+    # Check if the text overlaps with anything
+    text_over <- check_overlap_text(df_text_nudge, plotname)
+    
+    out_row <- df_text_nudge[df_text_nudge$Plot_Name == plotname, c("Plot_Name", "X_text", "Y_text")]
+    out_row$text_over <- text_over
+    out_row$label_placement <- label_placement
+    out_row$label_loc <- loc
+    out_row$x_sign <- x_sign
+    out_row$y_sign <- y_sign
+    df_comb <- rbind(out_row)
+    
+    if(quiet == FALSE){
+      if(text_over == TRUE){
+        if(label_placement == 9){cat("No non-overlapping label placement for ", 
+                                     plotname, ". Reset to default BR corner.", "\n", sep = "")} 
+      } else if(text_over == FALSE){cat("Non-overlapping position for ", plotname, " is ", loc, ".", "\n", sep = "")}
+    }
+
+    label_placement <- label_placement + 1
+    
+    df <- df_text_nudge
+    
+  } # end of while
+
+  df_text_final <- df_comb %>% filter(text_over == FALSE | label_placement == 10) #%>% 
+                              # select(-text_over, -label_placement)
+  return(df_text_final)
+} # end of function
+
 
 #----------------------
 # Function to eventually add to forestNETN/MIDN
@@ -98,7 +195,6 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
   df_geom_rad <- left_join(df_geom, st_drop_geometry(sf), by = "Plot_Name")
   
   # Convert final output to sf based on original plot coords
-  
   sf_geom_rad <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
   
   # # Create buffer to be similar to the size of pies. Use for checking plot overlap
@@ -119,8 +215,11 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
                                         X_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          X1 + dir_x*sin((ran_angle+angle)*(pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
-                                                         Y1 + dir_y*cos((ran_angle+angle)*(pi/180))*shift, Y1)) %>% 
-    select(Plot_Name, X1, Y1, X_nudge, Y_nudge, Unit_Code:std_var, fig_radius) %>% 
+                                                         Y1 + dir_y*cos((ran_angle+angle)*(pi/180))*shift, Y1),
+                                        X_text = ifelse(std_var == 0, X_nudge + 5, # better centering under point
+                                                                      X_nudge + fig_radius),
+                                        Y_text = Y_nudge - fig_radius) %>% 
+    select(Plot_Name, X1, Y1, X_nudge, Y_nudge, X_text, Y_text, Unit_Code:std_var, fig_radius) %>% 
     rename(X_orig = X1, Y_orig = Y1)
   
   sf_nudge <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = 5070) 
@@ -140,15 +239,17 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
 #   - add quietly = T/F so you can turn the chatter on/off in console
 #
 
-nudge_XY <- function(df, x, y, stdvar, min_shift = 0.5, max_iter = 10){
+nudge_XY <- function(df, x, y, stdvar, min_shift = 0.5, max_iter = 10, 
+                     nudge_point = TRUE, nudge_text = TRUE, quiet = TRUE){
   # source("nudge_XY_sing.R")
   # source("check_overlap.R")
   runs <- 0
   num_overlap <- 1
-  orig_df_XY <- df[ , c("Plot_Name", x, y)] %>% set_names("Plot_Name", "X_orig", "Y_orig")
+  orig_df_XY <- df[ , c("Plot_Name", x, y)] %>% set_names("Plot_Name", "X_orig", "Y_orig") 
   
   plot_list <- sort(unique(df$Plot_Name))
   
+  # Add if nudge_point == TRUE{ } for option not to run this part
   while(num_overlap > 0 && runs < max_iter){
     sf_nudge <- nudge_XY_sing(df, x, y, runs = runs, stdvar, min_shift)
     
@@ -156,6 +257,7 @@ nudge_XY <- function(df, x, y, stdvar, min_shift = 0.5, max_iter = 10){
     overlaps <- c(check_overlap(sf_nudge))
     runs <- runs + 1
     
+    if(quiet == FALSE){
     if(num_overlap > 0 && runs == max_iter){
       cat("After", paste0(runs), "iterations,", as.character(num_overlap), "graphs are still overlapping: ",
           as.character(overlaps), "\n",
@@ -167,6 +269,7 @@ nudge_XY <- function(df, x, y, stdvar, min_shift = 0.5, max_iter = 10){
     if(num_overlap == 0){
       cat("Pies are ready to plot using X_Nudge and Y_Nudge after ", as.character(runs), 
           " iterations.")
+    }
     }
     
     df <- cbind(st_drop_geometry(sf_nudge), st_coordinates(sf_nudge)) %>% 
@@ -180,11 +283,20 @@ nudge_XY <- function(df, x, y, stdvar, min_shift = 0.5, max_iter = 10){
     set_names(names(st_drop_geometry(sf_nudge)), "X_nudge", "Y_nudge") %>% 
     select(-X_orig, -Y_orig)
   
-  df_final <- merge(orig_df_XY, df_nudge, by = "Plot_Name", all.x = TRUE, all.y = TRUE) %>% 
-    select(-X, -Y)
+  # Add if(nudge_text == TRUE){} for option not to run this part
+  # Text label nudges next
+  df_nudge_text <- purrr::map_df(plot_list, ~nudge_text(df_nudge, plotname = .x, quiet = quiet))
+
+  # Prepare final dataset
+  # merge original to nudged pie dataset
+  df_comb <- merge(orig_df_XY, df_nudge, by = "Plot_Name", all.x = TRUE, all.y = TRUE) %>% 
+    select(-X, -Y, -X_text, -Y_text) 
+
+  # merge df_comb to nudged text dataset
+  
+  df_final <- merge(df_comb, df_nudge_text, by = "Plot_Name", all.x = TRUE, all.y = TRUE)
   
   return(df_final)
 }
-
 
 
