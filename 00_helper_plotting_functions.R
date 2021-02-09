@@ -28,16 +28,10 @@ pie_regsize_fun <- function(df, plotname, y_var, grp_var, std_var){
   y_var <- enquo(y_var)
   
   df2 <- df[df$Plot_Name == plotname,] %>% ungroup()
-  # pie_exp1 <- df2 %>% select(!!std_var) %>% unique() %>% as.numeric()
-  # pie_r <- pie_min + (pie_max - pie_min)*pie_exp1 # expansion factors for pies range(0.7, 2.5)
-  
+
   g <- ggplotGrob(
     suppressMessages(ggplot(df2, aes(x = "", y = !!y_var))+
-      # {if(all(df2[, std_var] == 0)) geom_point(shape = 17, color = "white",
-      #                                          size = 3.1)}+ #halo around symbol
-        
-      #{if(all(df2[, std_var] == 0)) geom_point(shape = 24, fill = "#ff7f00", size = 3)}+
-      
+
       {if(any(df2[, std_var] > 0)) geom_bar(stat = 'identity', width = 1, color = 'white',
                                             alpha = 0, lwd = 0.6)}+ #adds white halo around pie
 
@@ -59,6 +53,5 @@ pie_regsize_fun <- function(df, plotname, y_var, grp_var, std_var){
       )
   )
   ) #end of suppressWarnings
-  
   g
 }
