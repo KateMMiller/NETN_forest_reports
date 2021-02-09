@@ -87,7 +87,7 @@ nudge_text <- function(df, plotname, quiet = TRUE){
                             y = c(-1, -1, 1, 1, -1, 0, 1, 0, -1),
                             loc = c("BR", "BL", "UL", "UR", "BC", "ML", "UC", "MR", "BR")) #8th puts back to beginning
   
-  while(text_over == TRUE & label_placement < 9){
+  while(text_over == TRUE & label_placement < 10){
     
     df_text_nudge <- df
     
@@ -96,13 +96,21 @@ nudge_text <- function(df, plotname, quiet = TRUE){
     x_sign = new_place$x
     y_sign = new_place$y
     loc = new_place$loc
+    
+    
     df_text_nudge$X_text[df_text_nudge$Plot_Name == plotname] <- 
-      df_text_nudge$X_nudge[df_text_nudge$Plot_Name == plotname] + 
-      (df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * x_sign)
+      ifelse(df_text_nudge$std_var[df_text_nudge$Plot_Name == plotname] == 0, 
+               df_text_nudge$X_nudge[df_text_nudge$Plot_Name == plotname] + 5,
+             df_text_nudge$X_nudge[df_text_nudge$Plot_Name == plotname] + 
+               df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * x_sign
+             )
     
     df_text_nudge$Y_text[df_text_nudge$Plot_Name == plotname] <- 
-      df_text_nudge$Y_nudge[df_text_nudge$Plot_Name == plotname] + 
-      (df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * y_sign)
+      ifelse(df_text_nudge$std_var[df_text_nudge$Plot_Name == plotname] == 0, 
+               df_text_nudge$Y_nudge[df_text_nudge$Plot_Name == plotname] -
+                 1.1*df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname],
+             df_text_nudge$Y_nudge[df_text_nudge$Plot_Name == plotname] + 
+               df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * y_sign)
     
     # Check if the text overlaps with anything
     text_over <- check_overlap_text(df_text_nudge, plotname)
@@ -113,8 +121,9 @@ nudge_text <- function(df, plotname, quiet = TRUE){
     out_row$label_loc <- loc
     out_row$x_sign <- x_sign
     out_row$y_sign <- y_sign
+
     df_comb <- rbind(out_row)
-    
+      
     if(quiet == FALSE){
       if(text_over == TRUE){
         if(label_placement == 9){cat("No non-overlapping label placement for ", 
@@ -128,7 +137,7 @@ nudge_text <- function(df, plotname, quiet = TRUE){
     
   } # end of while
 
-  df_text_final <- df_comb %>% filter(text_over == FALSE | label_placement == 10) #%>% 
+  df_text_final <- df_comb %>% filter(text_over == FALSE | label_placement == 9) #%>% 
                               # select(-text_over, -label_placement)
   return(df_text_final)
 } # end of function
@@ -216,7 +225,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
                                                          X1 + dir_x*sin((ran_angle+angle)*(pi/180))*shift, X1),
                                         Y_nudge = ifelse(Plot_Name %in% plots_to_shift$Plot_Name,
                                                          Y1 + dir_y*cos((ran_angle+angle)*(pi/180))*shift, Y1),
-                                        X_text = ifelse(std_var == 0, X_nudge + 5, # better centering under point
+                                        X_text = ifelse(std_var == 0, X_nudge, # better centering under point
                                                                       X_nudge + fig_radius),
                                         Y_text = Y_nudge - fig_radius) %>% 
     select(Plot_Name, X1, Y1, X_nudge, Y_nudge, X_text, Y_text, Unit_Code:std_var, fig_radius) %>% 
