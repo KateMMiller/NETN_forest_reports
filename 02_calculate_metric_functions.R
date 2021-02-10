@@ -29,7 +29,8 @@ diff_totreg <- diff(range(reg2$totreg_m2))
 
 reg2 <- reg2 %>% mutate(totreg_std = (reg2$totreg_m2 - min_totreg) / (diff_totreg),
                         totreg_std2 = ifelse(totreg_std > 0 & totreg_std < 0.1, 0.1, totreg_std),
-                        fig_radius = pie_int + pie_slope*(totreg_std2))
+                        fig_radius = pie_int + pie_slope*(totreg_std2),
+                        fig_area = pi*(fig_radius^2))
 
 
 # Create long list for ggplot pie chart list
