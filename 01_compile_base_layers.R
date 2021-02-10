@@ -50,49 +50,52 @@ park_plots <- plots[plots$Unit_Cd == park_code, ]
 park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
   } else {"+init=epsg:26918"}
 
+
+#--------------------
+# Park and metric specific templates
+#--------------------
 park_layout <- ifelse(park_code %in% c("ACAD", "MABI", "MIMA", "ROVA"), "landscape", "portrait")
 
 
 #----- Create veg map legend for given park -----
 #arrange by factor level set for map_controls
 park_veg2 <- park_veg %>% arrange(veg_type) %>% st_drop_geometry(.) %>% 
-                          rownames_to_column(., var = "x")
- 
-head(park_veg2)
+                          rownames_to_column(., var = "x") %>% 
+                          mutate(stroke = 1)
 
 numcols <- ifelse(park_layout == "landscape", 2, 1) # Habitat type legend is 2 cols if landscape map
 
 veg_leg  <- ggplot(data = park_veg2, 
-                   aes(x = x, y = x, fill = veg_type))+
+                   aes(x = x, y = stroke, fill = veg_type))+ 
+                       #stroke = stroke))+
   geom_point(alpha = 0.8, shape = 22, size = 7.5)+
   scale_fill_manual(values = park_veg2$fills,
-                    name = "Habitat type")+
+                    name = "Habitat type", guide = "legend")+
+  # scale_color_manual(values = c(rep("black", nrow(park_veg2)-1), "#7d7d7d"),
+  #                    name = "Habitat type", guide = "legend")+
+  #scale_size_identity(guide = "legend")+
   theme_void()+
-  theme(legend.text = element_text(size = 11, margin=margin(r = 20)),
+  theme(legend.text = element_text(size = 11, margin = margin(r = 20)),
         legend.title = element_text(size = 12, face = "bold"),
         legend.position = 'right',
-        plot.background = element_blank(),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
+        plot.background = element_blank(), panel.background = element_blank(),
+        panel.border = element_blank(), axis.line = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.grid = element_blank())+
-  guides(fill = guide_legend(ncol = numcols)) #make legend 2 columns
+  guides(fill = guide_legend(ncol = numcols))#,
 
-#---------------------------------
-# Compile 
-#-------------------------------
-# Pie size controls 
-#-------------------------------
-# pie_expfac1 <- data.frame(park_code = c("ACAD", "MABI", "MIMA", "MORR", "ROVA", "SAGA", "SARA", "WEFA"),
-#                           pie_expfac = c(700, 50, 80, 80, 90, 25, 90, 22)) #~trial and error based on park's ideal map scale  
-# 
-# pie_expfac <- pie_expfac1$pie_expfac[pie_expfac1$park_code == park_code] 
+fake_bound <- data.frame(x = 1, y = 1, group = "Park boundary")
 
-#--------------------
-# Park and metric specific templates
-#--------------------
+bound_leg <- ggplot(data = fake_bound, aes(x, y, color = group))+
+             geom_point(shape = 22, size = 7.5, stroke = 1.5, fill = NA)+
+             scale_color_manual(values = c("Park boundary" = "#6a6a6a"))+
+             theme(legend.position = 'right', 
+                   legend.title = element_blank(),
+                   legend.text = element_text(size = 11, margin = margin(r = 20)),
+                   plot.background = element_blank(), panel.background = element_blank(),
+                   legend.background = element_blank(),
+                   legend.key = element_blank())
+
 
 #----- regsize pie legend -----
 # fake dataset for leg
