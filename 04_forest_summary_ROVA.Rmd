@@ -138,8 +138,6 @@ veg_gleg <- gtable_filter(ggplot_gtable(ggplot_build(veg_leg)), "guide-box")
 # park boundary legend
 bound_gleg <- gtable_filter(ggplot_gtable(ggplot_build(bound_leg)), "guide-box")
 
-#leg1 = rbind(regsize_gleg, bound_gleg)
-
 map_layout <- grid.layout(nrow = 5, ncol = 5, # 2 rows/col for margins
                           just = c("left"),
                           heights = unit(c(1, row1_height, 0.1, row2_height, 1), # adding 1 line margins

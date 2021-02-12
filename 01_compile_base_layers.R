@@ -68,15 +68,15 @@ numcols <- ifelse(park_layout == "landscape", 2, 1) # Habitat type legend is 2 c
 veg_leg  <- ggplot(data = park_veg2, 
                    aes(x = x, y = stroke, fill = veg_type))+ 
                        #stroke = stroke))+
-  geom_point(alpha = 0.8, shape = 22, size = 7.5)+
+  geom_point(alpha = 0.8, shape = 22, size = 5)+#7.5)+
   scale_fill_manual(values = park_veg2$fills,
                     name = "Habitat type", guide = "legend")+
   # scale_color_manual(values = c(rep("black", nrow(park_veg2)-1), "#7d7d7d"),
   #                    name = "Habitat type", guide = "legend")+
   #scale_size_identity(guide = "legend")+
   theme_void()+
-  theme(legend.text = element_text(size = 11, margin = margin(r = 20)),
-        legend.title = element_text(size = 12, face = "bold"),
+  theme(legend.text = element_text(size = 10, margin = margin(r = 20)),
+        legend.title = element_text(size = 11, face = "bold"),
         legend.position = 'right',
         plot.background = element_blank(), panel.background = element_blank(),
         panel.border = element_blank(), axis.line = element_blank(),
@@ -87,11 +87,12 @@ veg_leg  <- ggplot(data = park_veg2,
 fake_bound <- data.frame(x = 1, y = 1, group = "Park boundary")
 
 bound_leg <- ggplot(data = fake_bound, aes(x, y, color = group))+
-             geom_point(shape = 22, size = 7.5, stroke = 1.5, fill = NA)+
+             geom_point(shape = 22, size = 5, #7.5, 
+                        stroke = 1.5, fill = NA)+
              scale_color_manual(values = c("Park boundary" = "#6a6a6a"))+
              theme(legend.position = 'right', 
                    legend.title = element_blank(),
-                   legend.text = element_text(size = 11, margin = margin(r = 20)),
+                   legend.text = element_text(size = 10), #margin = margin(r = 20)),
                    plot.background = element_blank(), panel.background = element_blank(),
                    legend.background = element_blank(),
                    legend.key = element_blank())
@@ -123,10 +124,11 @@ regsize_leg <- ggplot(regsize_gen_df,
                      values = as.numeric(regsize_symb))+
   scale_size_manual(name = "Stem densities by size class",
                     labels = regsize_gen_df$labs,
-                    values = c(8, 8, 8, 8, 8, 3))+
+                    #values = c(8, 8, 8, 8, 8, 3))+
+                    values = c(5, 5, 5, 5, 5, 2))+
   theme_void()+
-  theme(legend.text = element_text(size = 11),
-        legend.title = element_text(size = 12, face = "bold"),
+  theme(legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11, face = "bold"),
         plot.background = element_blank(),
         panel.background = element_blank(),
         panel.border = element_blank(),
