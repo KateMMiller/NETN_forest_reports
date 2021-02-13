@@ -2,18 +2,23 @@
 # Source file to load all base layers, import data, and prepare for plotting
 #-----------------------
 library(sf)
-
+library(tidyverse)
 options(scipen = 100, digits = 6)
 #-----------------------------
 # Spatial data layers
 #-----------------------------
 
 #----- Load spatial data -----
-bounds <- st_read("./shapefiles/NETN_park_bounds_units_albers.shp")
-plots <- st_read("./shapefiles/NETN_forest_plots_albers.shp")
-#st_crs(plots) #5070
-vegmap <- st_read("./shapefiles/NETN_vegmap_albers.shp")
-sort(unique(vegmap$veg_type ))
+#----- Set up park controls- set in 04_forest_summary_ROVA.R -----
+# park_crs <- ifelse(park_code %in% c("ACAD", "MIMA"), "+init=epsg:26919", "+init=epsg:26918")
+# zone <- ifelse(park_code %in% c("ACAD", "MIMA"), 19, 18)
+# park_layout <- ifelse(park_code %in% c("ACAD", "MABI", "MIMA", "ROVA"), "landscape", "portrait")
+
+bounds <- st_read(paste0("./shapefiles/NETN_park_bounds_", zone, ".shp"))
+
+#plots <- st_read("./shapefiles/NETN_forest_plots_albers.shp")
+vegmap <- st_read(paste0("./shapefiles/NETN_vegmap_", zone, ".shp"))
+
 vegmap$veg_type <- factor(vegmap$veg_type,
                           levels = c("Conifer forest", "Conifer plantation", "Mixed forest", "Hardwood forest", "Mature hardwood forest",
                                      "Successional hardwood forest", "Spruce-fir forest", "Upland forest", "Exotic hardwood forest",
@@ -23,7 +28,6 @@ vegmap$veg_type <- factor(vegmap$veg_type,
 
 veg_colors <- read.csv("./shapefiles/Vegmap_colors.csv")
 units <- read.csv("tbl_Alternative_Plot_Labels.csv")
-
 #-----
 # Columns that specify map controls
 map_controls <- read.csv("./shapefiles/map_controls.csv")
@@ -44,18 +48,10 @@ map_controls$values <- factor(map_controls$values,
 #----- Set expansion factors based on scale -----
 park_bound <- bounds[bounds$Park == park_code, ]
 park_veg <- vegmap[vegmap$Park == park_code, ]
-park_plots <- plots[plots$Unit_Cd == park_code, ]
-
-#----- Set up park controls -----
-park_crs <- if(park_code %in% c("ACAD", "MIMA")){"+init=epsg:26919"
-  } else {"+init=epsg:26918"}
-
+#park_plots <- plots[plots$Unit_Cd == park_code, ]
 
 #--------------------
 # Park and metric specific templates
-#--------------------
-park_layout <- ifelse(park_code %in% c("ACAD", "MABI", "MIMA", "ROVA"), "landscape", "portrait")
-
 
 #----- Create veg map legend for given park -----
 #arrange by factor level set for map_controls
