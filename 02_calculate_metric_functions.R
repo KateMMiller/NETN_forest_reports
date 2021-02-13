@@ -6,7 +6,7 @@ library(forestNETN)
 # Regen by size class 
 #-------------------------------
 # Prep data
-regen_by_sizeclass <- function(park_code, year_start, year_end, pie_int, pie_slope){
+regen_by_sizeclass <- function(park_code, year_start, year_end, pie_int, pie_slope, CRS){
   reg <- joinRegenData(park = park_code, speciesType = "native", canopyForm = 'canopy', 
                        from = year_start, to = year_end)
   
@@ -50,11 +50,11 @@ reg_long <- reg_long %>% arrange(Plot_Name, size_class)
 reg_long2 <- left_join(reg_long, reg2, by = "Plot_Name") 
 
 # Convert output data to simple feature and transform to UTM Albers (5070)
-CRS <- if(park_code %in% c('ACAD', 'MIMA')){26919} else {26918} #coords from database
+#CRS <- if(park_code %in% c('ACAD', 'MIMA')){26919} else {26918} # calculated in 04_forest_summary
 reg2 <- reg2 %>% mutate(plot_num = as.numeric(Plot_Number)) #use for plot labels later
                        
 reg_sf <- st_as_sf(reg2, coords = c("X_Coord", "Y_Coord"), crs = CRS, agr = "constant") 
-reg_sf_alb <- st_transform(reg_sf, crs = 5070) #convert to UTM Albers
+reg_sf_alb <- st_transform(reg_sf, crs = CRS) #convert to UTM Albers
 
 reg_df <- cbind(st_drop_geometry(reg_sf_alb), st_coordinates(reg_sf_alb)) #strip new coords in Albers
 #reg_sf <- st_as_sf(reg_df, coords = c("X", "Y"), crs = 5070) #make into sf with new CRS
