@@ -43,26 +43,26 @@ check_overlap <- function(sf){
 # Function to eventually add to forestNETN/MIDN
 # Internal helper function used within nudge_XY 
 #----------------------
-check_overlap_text <- function(df, plotname){
+check_overlap_text <- function(df, plotname, CRS){
   min_fig_rad <- min(df$fig_radius, na.rm = T) + 
     0.1*(min(df$fig_radius, na.rm = T))
   
   # Set up pies/labels to check against
   df_pies <- df %>% mutate(type = "pie", X = X_nudge, Y = Y_nudge)
   df_text <- df %>% mutate(type = 'text', X = X_text, Y = Y_text,
-                           fig_radius = min(fig_radius) + 0.1*(min(fig_radius))) #added 10% buffer to size 
+                           fig_radius = min(fig_radius))#+ 0.1*(min(fig_radius))) #added 10% buffer to size 
   df_text_rest <- df_text %>% filter(!Plot_Name %in% plotname)
   df_pies_rest <- df_pies %>% filter(!Plot_Name %in% plotname)
   
   colnames <- c("Plot_Name", "X", "Y", "fig_radius")
   sf_comb <- st_as_sf(rbind(df_pies_rest[,colnames], df_text_rest[,colnames]),
-                      coords = c('X', 'Y'), crs = 5070)
+                      coords = c('X', 'Y'), crs = CRS)
   sf_buff <- st_buffer(sf_comb, dist = sf_comb$fig_radius) %>% st_union()
   
   # Set up label for plotname being checked
   df_pies_plot <- df_pies %>% filter(Plot_Name %in% plotname)
   df_text_plot <- df_text %>% filter(Plot_Name %in% plotname)
-  sf_plot <- st_as_sf(df_text_plot, coords = c("X", "Y"), crs = 5070)
+  sf_plot <- st_as_sf(df_text_plot, coords = c("X", "Y"), crs = CRS)
   sf_plot_buff <- st_buffer(sf_plot, dist = sf_plot$fig_radius)
   
   check_over <- st_intersects(sf_buff, sf_plot_buff, sparse = F, 
@@ -108,7 +108,7 @@ nudge_text <- function(df, plotname, quiet = TRUE){
     df_text_nudge$Y_text[df_text_nudge$Plot_Name == plotname] <- 
       ifelse(df_text_nudge$std_var[df_text_nudge$Plot_Name == plotname] == 0, 
                df_text_nudge$Y_nudge[df_text_nudge$Plot_Name == plotname] -
-                 1.1*df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname],
+                 1.2*df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname], #1.2 to give more space b/t points
              df_text_nudge$Y_nudge[df_text_nudge$Plot_Name == plotname] + 
                df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * y_sign)
     
@@ -152,7 +152,7 @@ nudge_text <- function(df, plotname, quiet = TRUE){
 # Using CRS 5070 (UTM albers). Returns a data.frame with nudged coordinates
 #   - consider adding crs as an argument, but keep it in UTM
 #
-nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
+nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5, CRS){
   if(!exists('runs')){runs = 1}
   
   df$X1 <- df[,x]
@@ -161,7 +161,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
   # create sf from df
   plot_list <- sort(unique(df$Plot_Name))
   
-  sf <- st_as_sf(df, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
+  sf <- st_as_sf(df, coords = c("X1", "Y1"), crs = CRS, agr = "constant")
   
   # Approximate pie size for each plot
   
@@ -204,7 +204,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
   df_geom_rad <- left_join(df_geom, st_drop_geometry(sf), by = "Plot_Name")
   
   # Convert final output to sf based on original plot coords
-  sf_geom_rad <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = 5070, agr = "constant")
+  sf_geom_rad <- st_as_sf(df_geom_rad, coords = c("X1", "Y1"), crs = CRS, agr = "constant")
   
   # # Create buffer to be similar to the size of pies. Use for checking plot overlap
   #sf_buff <- st_buffer(sf_geom_rad, sf_geom_rad$fig_radius)
@@ -231,7 +231,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
     select(Plot_Name, X1, Y1, X_nudge, Y_nudge, X_text, Y_text, Unit_Code:std_var, fig_radius) %>% 
     rename(X_orig = X1, Y_orig = Y1)
   
-  sf_nudge <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = 5070) 
+  sf_nudge <- st_as_sf(df_geom_rad, coords = c("X_nudge", "Y_nudge"), crs = CRS) 
   
   return(sf_nudge)
   
@@ -248,7 +248,7 @@ nudge_XY_sing <- function(df, x, y, runs, stdvar, min_shift = 0.5){
 #   - add quietly = T/F so you can turn the chatter on/off in console
 #
 
-nudge_XY <- function(df, x, y, stdvar, min_shift = 0.5, max_iter = 10, 
+nudge_XY <- function(df, x, y, stdvar, min_shift = 0.5, max_iter = 10, CRS, 
                      nudge_point = TRUE, nudge_text = TRUE, quiet = TRUE){
   # source("nudge_XY_sing.R")
   # source("check_overlap.R")
