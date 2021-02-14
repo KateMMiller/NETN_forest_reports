@@ -62,15 +62,6 @@ elho_yrat <- elho_yrange/rova_yrange # Ratio of ELRO/HOFR to whole ROVA
 vama_yrat + elho_yrat
 # each unit has its own row, so don't need to subtract vama, like col widths
 
-#rova_250_18 <- st_transform(rova_buff_bound, crs = 26918)
-#rova_200_18 <- st_transform(rova_vama_buff, crs = 26918)
-# bb250 <- st_bbox(rova_buff_bound %>% filter(Unit == "VAMA"))
-# # bb200 <- st_bbox(rova_vama_buff %>% filter(Unit == "VAMA"))
-# 
-# vama_bbox <- c(bb250$xmin - 50, bb200$ymin, bb250$xmax + 50, bb200$ymax)
-# vama_bbox <- c(bb250$xmin, bb200$ymin, bb250$xmax, bb200$ymax)
-# vama_bbox
-
 vama <-   
   tm_shape(park_veg, projection = 26918, bbox = st_bbox(vama_bbox))+#, bbox = vama_bbox) +
   tm_fill("fills", alpha = 0.8) +
@@ -80,13 +71,13 @@ vama <-
            projection = 26918) +
   tm_borders(col = "#6a6a6a", lwd = 2) +
   tm_legend(show = FALSE) +
-  tm_layout(inner.margins = c(0.025, 0.03, 0, 0), 
+  tm_layout(inner.margins = c(0.04, 0.05, 0, 0), 
             #outer.margins = c(0.01, 0.01, 0.01, 0.01),
             #outer.margins = c(0.02, 0.00832, 0.008, 0.01),
             #outer.margins = c(0, 0.04, 0.01, 0.01),
             bg.color = "#d4d4d4",
             frame = FALSE,
-            fontfamily = "A")+
+            fontfamily = "Arial")+
   #tm_scale_bar(breaks = c(0,0.25,0.5))+  # still here to check scale occasionally
   NULL
 
@@ -111,5 +102,5 @@ rova <- tm_shape(rova_buff_bound %>% filter(Unit != "VAMA"), projection = 26918,
             #outer.margins = c(0.02, 0.00832, 0.008, 0.01),
             frame = FALSE,
             bg.color = "#d4d4d4",
-            fontfamily = "A")+
+            fontfamily = "Arial")+
   tm_legend(show = FALSE)

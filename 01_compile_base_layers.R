@@ -72,8 +72,9 @@ veg_leg  <- ggplot(data = park_veg2,
   #scale_size_identity(guide = "legend")+
   theme_void()+
   theme(legend.text = element_text(size = 10, margin = margin(r = 20)),
-        legend.title = element_text(size = 11, face = "bold"),
+        legend.title = element_text(size = 11, family = "Arial", face = "bold"),
         legend.position = 'right',
+        text = element_text(family = "Arial"),
         plot.background = element_blank(), panel.background = element_blank(),
         panel.border = element_blank(), axis.line = element_blank(),
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -89,6 +90,7 @@ bound_leg <- ggplot(data = fake_bound, aes(x, y, color = group))+
              theme(legend.position = 'right', 
                    legend.title = element_blank(),
                    legend.text = element_text(size = 10), #margin = margin(r = 20)),
+                   text = element_text(family = "Arial"),
                    plot.background = element_blank(), panel.background = element_blank(),
                    legend.background = element_blank(),
                    legend.key = element_blank())
@@ -125,6 +127,7 @@ regsize_leg <- ggplot(regsize_gen_df,
   theme_void()+
   theme(legend.text = element_text(size = 10),
         legend.title = element_text(size = 11, face = "bold"),
+        text = element_text(family = "Arial"),
         plot.background = element_blank(),
         panel.background = element_blank(),
         panel.border = element_blank(),
@@ -133,6 +136,7 @@ regsize_leg <- ggplot(regsize_gen_df,
         panel.grid.minor = element_blank(),
         panel.grid = element_blank())
 
+regsize_leg
 
 
 
