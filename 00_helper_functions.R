@@ -83,9 +83,9 @@ nudge_text <- function(df, plotname, quiet = TRUE){
   
   # Placement properties
   place_props <- data.frame(order = 1:9,
-                            x = c(1, -1, -1, 1, 0, -1, 0, 1, 1), 
-                            y = c(-1, -1, 1, 1, -1, 0, 1, 0, -1),
-                            loc = c("BR", "BL", "UL", "UR", "BC", "ML", "UC", "MR", "BR")) #8th puts back to beginning
+                            x = c(1, 0, -1, -1, 1, -1, 0, 1, 1), 
+                            y = c(-1, -1, -1, 1, 1, 0, 1, 0, 1),
+                            loc = c("BR", "BC", "BL", "UL", "UR", "ML", "UC", "MR", "UR")) #8th puts back to UR
   
   while(text_over == TRUE & label_placement < 10){
     
@@ -102,15 +102,15 @@ nudge_text <- function(df, plotname, quiet = TRUE){
       ifelse(df_text_nudge$std_var[df_text_nudge$Plot_Name == plotname] == 0, 
                df_text_nudge$X_nudge[df_text_nudge$Plot_Name == plotname] + 5,
              df_text_nudge$X_nudge[df_text_nudge$Plot_Name == plotname] + 
-               df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * x_sign
+               1.05*df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * x_sign
              )
     
     df_text_nudge$Y_text[df_text_nudge$Plot_Name == plotname] <- 
       ifelse(df_text_nudge$std_var[df_text_nudge$Plot_Name == plotname] == 0, 
                df_text_nudge$Y_nudge[df_text_nudge$Plot_Name == plotname] -
-                 1.2*df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname], #1.2 to give more space b/t points
+                 1.5*df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname], #1.2 to inc. space b/t pt & lab.
              df_text_nudge$Y_nudge[df_text_nudge$Plot_Name == plotname] + 
-               df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * y_sign)
+               1.05*df_text_nudge$fig_radius[df_text_nudge$Plot_Name == plotname] * y_sign)
     
     # Check if the text overlaps with anything
     text_over <- check_overlap_text(df_text_nudge, plotname)
