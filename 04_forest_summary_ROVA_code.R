@@ -1,6 +1,19 @@
-windowsFonts(A = windowsFont("Arial"))
+library(extrafont)
+loadfonts(device = 'pdf')
+loadfonts(device = "win")
+#library(pdftools)
+
+windowsFonts(Arial = windowsFont("TT Arial"))
+
 park_code = "ROVA"
-#park_code <- params$park_code
+
+# library(extrafont)
+# loadfonts()
+# Downloaded Ghostwriter from https://www.ghostscript.com/download/gsdnld.html
+# for embedding fonts in pdf
+# Sys.setenv(R_GSCMD = "C:/Program Files/gs/gs9.53.3/bin/gswin64c.exe")
+#  
+# #park_code <- params$park_code
 
 library(tidyverse)
 library(forestNETN)
@@ -14,7 +27,7 @@ importData()
 
 pie_int = 40 # ~Size of smallest pie in m. Used in 02_calculate_metric_functions to calc. fig_radius
 # pie_int + pie_slope*0.01 will be the smallest pie size mapped
-pie_slope = 160 # Expansion factor to increase pie size by (pie_int + pie_slope(std_var)). 
+pie_slope = 180 # Expansion factor to increase pie size by (pie_int + pie_slope(std_var)). 
 # Used in 02_calculate_metric_functions to calc. fig_radius
 
 #----- Set up park controls -----
@@ -27,14 +40,14 @@ park_layout <- ifelse(park_code %in% c("ACAD", "MABI", "MIMA", "ROVA"), "landsca
 source("00_helper_functions.R") # nudge_XY and dependency functions
 source("00_helper_plotting_functions.R") # pie, chart and corresponding legend functions
 source("01_compile_base_layers.R") # load spatial data and set up metric-level templates/legends
-source("02_calculate_metric_functions.R") # metric summary functions
-source(paste0("03_park_template_", park_code, ".R")) # Creates park-specifi
+source("02_calculate_metric_functions.R") # metric summary functions. fig_radius calculated here
+source(paste0("03_park_template_", park_code, ".R")) # Creates park-specific
 
 regen_by_sizeclass(park_code, 2016, 2019, pie_int, pie_slope, CRS) # adds regsize_df & regsize_long to GE
 
 # Nudge XY coords if pies will overlap
 regsize_nudge <- nudge_XY(regsize_df, x = "X", y = "Y", stdvar = "totreg_std2", CRS = CRS,
-                          max_iter = 30, min_shift = 0.6, quiet = FALSE) 
+                          max_iter = 30, min_shift = 0.5, quiet = FALSE) 
 
 # Create list of pies
 vama_list <- sort(unique(regsize_nudge$Plot_Name[regsize_nudge$Unit == "VAMA"]))
@@ -77,7 +90,7 @@ bound_gleg <- gtable_filter(ggplot_gtable(ggplot_build(bound_leg)), "guide-box")
 rova_reg <- rova +  
   tm_shape(rova_sf %>% arrange(-fig_radius))+
   tm_symbols(size = "fig_area",
-             scale = 2.4,
+             scale = 2,
              size.max = max(regsize_nudge$fig_area),
              size.lim = c(min(regsize_nudge$fig_area), max(regsize_nudge$fig_area)), 
              perceptual = TRUE,
@@ -91,12 +104,12 @@ rova_reg <- rova +
       tm_dots(shape = 24, border.col = "white", border.lwd = 1.8, size = 0.4)+
       tm_shape(rova_sf %>% filter(totreg_std2 == 0))+
       tm_dots(shape = 24, col = "#ff7f00", size = 0.3)}+
-  
   tm_shape(rova_text)+ # add plot labels
   tm_text("plot_num", size = 0.6, #xmod = 0.01, ymod = -0.01,
           col = "black", bg.alpha = 0.8,
           just = 'center', shadow = "TRUE",
-          fontface = 'bold')+
+          fontface = 'bold', 
+          fontfamily = "Arial")+
   # tm_shape(rova_buff)+
   # tm_borders(col = 'red')
   NULL
@@ -104,7 +117,7 @@ rova_reg <- rova +
 vama_reg <- vama +  
   tm_shape(vama_sf %>% arrange(-fig_radius))+
   tm_symbols(size = "fig_area",
-             scale = 2.4, #2.5,
+             scale = 2, #2.5,
              size.max = max(regsize_nudge$fig_area),
              size.lim = c(min(regsize_nudge$fig_area), max(regsize_nudge$fig_area)), #diam
              perceptual = TRUE,
@@ -119,7 +132,7 @@ vama_reg <- vama +
       tm_shape(vama_sf %>% filter(totreg_std2 == 0))+
       tm_dots(shape = 24, col = "#ff7f00", size = 0.3)}+
   tm_shape(vama_text)+
-  tm_text("plot_num", size = 0.6, 
+  tm_text("plot_num", size = 0.6, fontfamily = "Arial",
           col = "black", bg.alpha = 0.8,
           just = 'center', shadow = "TRUE",
           fontface = 'bold')+
@@ -127,7 +140,6 @@ vama_reg <- vama +
   # tm_borders(col = 'red')
   NULL
 
-library(gridtext)
 map1_text <- c("Trends in tree regeneration stem densities by size class in forest plots from the most recent survey cycle (2017
 & 2019). Each plot is sampled on a 4-year cycle in an alternating panel, with plots 1-20 sampled in 2019, and
 plots 21-40 sampled in 2017. Pie size is proportional to plot-level regeneration, and location may be shifted to
@@ -137,7 +149,7 @@ canopy-forming species (differs from 2017 summary, which included all native spe
 cap_grob<-textbox_grob(map1_text, hjust = 0, vjust = 1,
                        #x = 0, y = 0.98, 
                        padding = unit(c(0.3,0.3,0.3,0.3), "lines"), #t,r,b,l
-                       gp = gpar(fontsize = 10, lineheight = 1.1),
+                       gp = gpar(fontsize = 10, lineheight = 1.3, family = "Arial"),
                        box_gp = gpar(col = 'black', fill = "white"),
 )
 page_width <- 10.5
@@ -160,6 +172,7 @@ map_vp <- viewport(name = "map_vp", layout = map_layout, #just = c("right", "cen
 # ROVA_vp()
 library(png)
 arrowhead <- readPNG("./figures/ah_small_flat_4c_blackbkgr_k100.png")
+
 ROVA_vp <- function(){
   grid.newpage()
   pushViewport(map_vp)
@@ -167,19 +180,19 @@ ROVA_vp <- function(){
   grid.rect(gp = gpar(col = "black", fill = "black"), 
             vp = viewport(layout.pos.row = 1, layout.pos.col = NULL))#, x = 0.5, y = 0.75, height = unit(1, 'in'))
   grid.text("Northeast Temperate Network", 
-            gp = gpar(col = "white", fontface = "bold", fontsize = 10),
+            gp = gpar(col = "white", fontface = "bold", family = "Arial", fontsize = 10),
             vp = viewport(layout.pos.row = 1, layout.pos.col = NULL), x = 0.01, y = 0.85, just = "left")
   grid.text("Forest Health Monitoring Program", 
-            gp = gpar(col = "white", fontface = "bold", fontsize = 10),
+            gp = gpar(col = "white", fontface = "bold", family = "Arial", fontsize = 10),
             vp = viewport(layout.pos.row = 1, layout.pos.col = NULL), x = 0.01, y = 0.65, just = 'left')
   grid.text("National Park Service", 
-            gp = gpar(col = "white", fontface = "bold", fontsize = 10),
+            gp = gpar(col = "white", fontface = "bold", family = "Arial", fontsize = 10),
             vp = viewport(layout.pos.row = 1, layout.pos.col = NULL), x = 0.63, y = 0.85, just = "left")
   grid.text("U.S. Department of the Interior", 
-            gp = gpar(col = "white", fontface = "bold", fontsize = 10),
+            gp = gpar(col = "white", fontface = "bold", family = "Arial", fontsize = 10),
             vp = viewport(layout.pos.row = 1, layout.pos.col = NULL), x = 0.63, y = 0.65, just = 'left')
   grid.text("Roosevelt-Vanderbilt National Historic Sites", 
-            gp = gpar(col = "white", fontface = "bold", fontsize = 10),
+            gp = gpar(col = "white", fontface = "bold", family = "Arial", fontsize = 10),
             vp = viewport(layout.pos.row = 1, layout.pos.col = NULL), x = 0.63, y = 0.25, just = 'left')
   grid.raster(arrowhead, width = 0.06,
               vp = viewport(layout.pos.row = 1, layout.pos.col = NULL), x = 0.92, y = 0.5, just = 'left')
@@ -205,7 +218,7 @@ ROVA_vp <- function(){
   grid.rect(gp = gpar(col = "black", fill = "white"))
   # Create grid within top right for captions and legend
   pushViewport(viewport(layout = grid.layout(nrow = 4, ncol = 2,  #row 1 is title;2 caption; 3 legend;4 legend2
-                                             heights = unit(c(0.125, 0.375, 0.39, 0.15), 
+                                             heights = unit(c(0.125, 0.39, 0.375, 0.15), 
                                                             c("null", "null", "null", "null")),
                                              widths = unit(c(0.4, 0.6), c("null", "null")))))
   # Title
@@ -222,7 +235,7 @@ ROVA_vp <- function(){
   grid.draw(regsize_gleg)
   popViewport(1)
   # Legend for park boundary
-  pushViewport(viewport(x = unit(0.141, "native"), y = unit(0.063, "native")))
+  pushViewport(viewport(x = unit(0.147, "native"), y = unit(0.068, "native")))
   grid.draw(bound_gleg)
   popViewport(1)
   # Legend for habitat type
@@ -232,7 +245,14 @@ ROVA_vp <- function(){
 
 }
 
-jpeg("ROVA_Map_1b.jpg", height = 8.5, width = 10.5, units = "in", res = 600)
+
+# jpeg("ROVA_Map_1c.jpg", height = 8.5, width = 10.5, units = "in", res = 600)
+ROVA_vp()
+# dev.off()
+
+cairo_pdf("ROVA_Map_1.pdf", height = 8.5, width = 11, family = "Arial")
 ROVA_vp()
 dev.off()
 
+library(pdftools)
+pdf_combine(c("ROVA_Map_1.pdf", "ROVA_Map_2.pdf"), output = "ROVA_comb.pdf")
